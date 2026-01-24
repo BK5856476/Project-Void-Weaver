@@ -12,8 +12,8 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Gemini AI 服务
- * 使用前端传来的 API Key 调用 Gemini REST API
+ * Gemini AI Service
+ * Uses Gemini API Key from frontend request
  */
 @Slf4j
 @Service
@@ -23,29 +23,26 @@ public class GeminiService {
         private final OkHttpClient httpClient;
         private final ObjectMapper objectMapper;
 
-        private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
+        private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent";
         private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
         /**
-         * 分析图片并提取8个模块
-         * 使用前端传来的 geminiApiKey
+         * Analyze image and extract 8 modules
+         * Uses geminiApiKey from frontend
          */
         public AnalyzeResponse analyzeImage(AnalyzeRequest request) {
-                log.info("Analyzing image with Gemini API...");
+                log.info("Analyzing image with Gemini 3 Pro API...");
 
                 try {
-                        // 构建请求体
                         Map<String, Object> requestBody = buildAnalyzeRequestBody(request.getImageData());
                         String jsonBody = objectMapper.writeValueAsString(requestBody);
 
-                        // 构建 HTTP 请求（API Key 作为 URL 参数）
                         String url = GEMINI_API_URL + "?key=" + request.getGeminiApiKey();
                         Request httpRequest = new Request.Builder()
                                         .url(url)
                                         .post(RequestBody.create(jsonBody, JSON))
                                         .build();
 
-                        // 发送请求
                         try (Response response = httpClient.newCall(httpRequest).execute()) {
                                 if (!response.isSuccessful()) {
                                         throw new IOException("Gemini API call failed: " + response.code() + " "
@@ -55,43 +52,38 @@ public class GeminiService {
                                 String responseBody = response.body().string();
                                 log.debug("Gemini response: {}", responseBody);
 
-                                // 解析响应
                                 return parseAnalyzeResponse(responseBody);
                         }
 
                 } catch (Exception e) {
                         log.error("Failed to analyze image with Gemini: {}", e.getMessage(), e);
-                        throw new RuntimeException("Gemini API 调用失败: " + e.getMessage(), e);
+                        throw new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
                 }
         }
 
         /**
-         * 精炼模块 - 使用自然语言指令更新未锁定的模块
+         * Refine modules based on natural language instruction
          */
         public RefineResponse refineModules(RefineRequest request) {
                 log.info("Refining modules with instruction: {}", request.getInstruction());
 
                 try {
-                        // 过滤未锁定的模块
                         List<ModuleDto> unlockedModules = request.getModules().stream()
                                         .filter(module -> !module.getLocked())
                                         .toList();
 
                         log.info("Found {} unlocked modules to refine", unlockedModules.size());
 
-                        // 构建请求体
                         Map<String, Object> requestBody = buildRefineRequestBody(unlockedModules,
                                         request.getInstruction());
                         String jsonBody = objectMapper.writeValueAsString(requestBody);
 
-                        // 构建 HTTP 请求
                         String url = GEMINI_API_URL + "?key=" + request.getGeminiApiKey();
                         Request httpRequest = new Request.Builder()
                                         .url(url)
                                         .post(RequestBody.create(jsonBody, JSON))
                                         .build();
 
-                        // 发送请求
                         try (Response response = httpClient.newCall(httpRequest).execute()) {
                                 if (!response.isSuccessful()) {
                                         throw new IOException("Gemini API call failed: " + response.code() + " "
@@ -101,19 +93,15 @@ public class GeminiService {
                                 String responseBody = response.body().string();
                                 log.debug("Gemini refine response: {}", responseBody);
 
-                                // 解析响应
                                 return parseRefineResponse(responseBody);
                         }
 
                 } catch (Exception e) {
                         log.error("Failed to refine modules with Gemini: {}", e.getMessage(), e);
-                        throw new RuntimeException("Gemini Refine 失败: " + e.getMessage(), e);
+                        throw new RuntimeException("Gemini Refine failed: " + e.getMessage(), e);
                 }
         }
 
-        /**
-         * 构建图片分析请求体
-         */
         private Map<String, Object> buildAnalyzeRequestBody(String imageData) {
                 String systemPrompt = """
                                 You are an expert image analyst. Analyze the given image and extract descriptive tags into 8 categories.
@@ -157,9 +145,6 @@ public class GeminiService {
                                                 "responseMimeType", "application/json"));
         }
 
-        /**
-         * 构建模块精炼请求体
-         */
         private Map<String, Object> buildRefineRequestBody(List<ModuleDto> modules, String instruction)
                         throws Exception {
                 String modulesJson = objectMapper.writeValueAsString(modules);
@@ -189,9 +174,6 @@ public class GeminiService {
                                                 "responseMimeType", "application/json"));
         }
 
-        /**
-         * 解析 Gemini 分析响应
-         */
         private AnalyzeResponse parseAnalyzeResponse(String responseBody) throws Exception {
                 JsonNode root = objectMapper.readTree(responseBody);
                 JsonNode candidates = root.path("candidates");
@@ -211,9 +193,6 @@ public class GeminiService {
                 return objectMapper.readValue(jsonContent, AnalyzeResponse.class);
         }
 
-        /**
-         * 解析 Gemini 精炼响应
-         */
         private RefineResponse parseRefineResponse(String responseBody) throws Exception {
                 JsonNode root = objectMapper.readTree(responseBody);
                 JsonNode candidates = root.path("candidates");
