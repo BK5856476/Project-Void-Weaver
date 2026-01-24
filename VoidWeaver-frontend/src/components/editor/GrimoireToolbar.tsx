@@ -16,12 +16,13 @@
  */
 
 import { FC } from 'react'
-import { Terminal, Wand2, Zap } from 'lucide-react'
+import { Terminal, Wand2, Zap, Copy } from 'lucide-react'
 
 // Props 类型定义
 interface GrimoireToolbarProps {
     onDecipher: () => void      // Decipher 按钮点击回调
     onManifest: () => void       // MANIFEST 按钮点击回调
+    onCopy: () => void           // 复制 Prompt 回调
     isAnalyzing?: boolean        // 是否正在分析
     isGenerating?: boolean       // 是否正在生成
 }
@@ -29,8 +30,9 @@ interface GrimoireToolbarProps {
 const GrimoireToolbar: FC<GrimoireToolbarProps> = ({
     onDecipher,
     onManifest,
-    isAnalyzing = false,         // 默认值：false
-    isGenerating = false         // 默认值：false
+    onCopy,
+    isAnalyzing = false,
+    isGenerating = false
 }) => {
     return (
         // 工具栏容器：固定高度，半透明背景，毛玻璃效果
@@ -38,33 +40,42 @@ const GrimoireToolbar: FC<GrimoireToolbarProps> = ({
 
             {/* 左侧：标题区域 */}
             <div className="flex items-center gap-2 text-zinc-400">
-                <Terminal className="w-4 h-4" /> {/* 终端图标 */}
+                <Terminal className="w-4 h-4" />
                 <span className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-                    Codex Grimoire // v2.4 {/* 法典名称和版本号 */}
+                    Codex Grimoire // v2.4
                 </span>
             </div>
 
             {/* 右侧：操作按钮组 */}
             <div className="flex gap-3">
 
+                {/* 复制按钮 */}
+                <button
+                    onClick={onCopy}
+                    className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors h-9 w-9 border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="复制完整提示词"
+                >
+                    <Copy className="w-4 h-4" />
+                </button>
+
                 {/* Decipher 按钮（解析现实） */}
                 <button
                     onClick={onDecipher}
-                    disabled={isAnalyzing} // 分析中时禁用
+                    disabled={isAnalyzing}
                     className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors h-9 px-4 border border-zinc-700 bg-zinc-800 text-cyan-400 hover:bg-zinc-700 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <Wand2 className="w-3 h-3" /> {/* 魔杖图标 */}
-                    {isAnalyzing ? 'Analyzing...' : 'Decipher'} {/* 动态文字：分析中 / 解析 */}
+                    <Wand2 className="w-3 h-3" />
+                    {isAnalyzing ? 'Analyzing...' : 'Decipher'}
                 </button>
 
                 {/* MANIFEST 按钮（具象化） */}
                 <button
                     onClick={onManifest}
-                    disabled={isGenerating} // 生成中时禁用
+                    disabled={isGenerating}
                     className="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors h-9 px-4 bg-purple-600 text-white hover:bg-purple-700 shadow-[0_0_15px_rgba(168,85,247,0.4)] gap-2 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <Zap className="w-3 h-3" /> {/* 闪电图标 */}
-                    {isGenerating ? 'GENERATING...' : 'MANIFEST'} {/* 动态文字：生成中 / 具象化 */}
+                    <Zap className="w-3 h-3" />
+                    {isGenerating ? 'GENERATING...' : 'MANIFEST'}
                 </button>
 
             </div>

@@ -2,13 +2,9 @@
  * ModuleCard.tsx - 模块卡片组件（文本框 + 权重调整）
  * 
  * 功能：
- * - 像文本框一样编辑标签（每行一个）
- * - 权重格式：weight::tag::（NovelAI 格式，如 1.5::beautiful girl::）
- * - 选中某行文本时显示加权/减权按钮
- * - 加权：增加 0.5
- * - 减权：减少 0.5
- * - 权重范围：0.5 - 5.0
- * - 锁定时只读
+ * 1. 使用 weight::tag:: 格式
+ * 2. 选中的文本作为整体加权（如 2::A,B::）
+ * 3. 调整权重后保持光标位置
  */
 
 import { FC, useState, useEffect, useRef } from 'react'
@@ -41,178 +37,162 @@ const ModuleCard: FC<ModuleCardProps> = ({
     const IconComponent = MODULE_ICONS[module.name] || Layers
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-    // 本地状态
-    const [tags, setTags] = useState<TagDto[]>(module.tags)
-    const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null)
+    const [textValue, setTextValue] = useState('')
+    const [currentWeight, setCurrentWeight] = useState(1.0)
     const [showWeightButtons, setShowWeightButtons] = useState(false)
 
-    // 同步 module.tags 到本地状态
+    // 同步 store tags 到显示文本
     useEffect(() => {
-        setTags(module.tags)
-    }, [module.tags])
-
-    /**
-     * 获取当前光标所在行的索引
-     */
-    const getCurrentLineIndex = (): number => {
-        const textarea = textareaRef.current
-        if (!textarea) return -1
-
-        const cursorPos = textarea.selectionStart
-        const text = textarea.value
-        const lines = text.substring(0, cursorPos).split('\n')
-        return lines.length - 1
-    }
-
-    /**
-     * 处理文本选择变化
-     */
-    const handleSelectionChange = () => {
-        const lineIndex = getCurrentLineIndex()
-        const validTags = tags.filter(t => t.text.trim())
-
-        if (lineIndex >= 0 && lineIndex < validTags.length) {
-            setSelectedLineIndex(lineIndex)
-            setShowWeightButtons(true)
-        } else {
-            setShowWeightButtons(false)
-        }
-    }
-
-    /**
-     * 处理文本变化
-     */
-    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const text = e.target.value
-        const lines = text.split('\n')
-
-        // 解析为标签列表
-        const newTags: TagDto[] = []
-
-        lines.forEach((line, index) => {
-            const trimmedLine = line.trim()
-
-            // 跳过空行
-            if (!trimmedLine) return
-
-            let tagText = trimmedLine
-            let weight = 1.0
-
-            // 尝试解析 weight::tag:: 格式
-            const weightMatch = trimmedLine.match(/^([\d.]+)::(.+)::$/)
-            if (weightMatch) {
-                weight = parseFloat(weightMatch[1])
-                tagText = weightMatch[2].trim()
-            } else {
-                // 兼容旧格式 tag (×weight)
-                const oldFormatMatch = trimmedLine.match(/^(.+?)\s*\(×([\d.]+)\)$/)
-                if (oldFormatMatch) {
-                    tagText = oldFormatMatch[1].trim()
-                    weight = parseFloat(oldFormatMatch[2])
-                }
-            }
-
-            if (!tagText) return
-
-            // 尝试保留原有标签的ID
-            const existingTag = tags.find(t => t.text === tagText)
-
-            newTags.push({
-                id: existingTag?.id || generateId(),
-                text: tagText,
-                weight: weight,
-            })
-        })
-
-        setTags(newTags)
-        onUpdateTags(module.name, newTags)
-    }
-
-    /**
-     * 增加权重（+0.5）
-     */
-    const handleIncreaseWeight = () => {
-        if (selectedLineIndex === null) return
-
-        const validTags = tags.filter(t => t.text.trim())
-        const newTags = [...tags]
-        const tagIndex = tags.findIndex((t, i) => {
-            const validIndex = validTags.indexOf(t)
-            return validIndex === selectedLineIndex
-        })
-
-        if (tagIndex >= 0) {
-            newTags[tagIndex] = {
-                ...newTags[tagIndex],
-                weight: Math.min(newTags[tagIndex].weight + 0.5, 5.0)
-            }
-            setTags(newTags)
-            onUpdateTags(module.name, newTags)
-        }
-    }
-
-    /**
-     * 减少权重（-0.5）
-     */
-    const handleDecreaseWeight = () => {
-        if (selectedLineIndex === null) return
-
-        const validTags = tags.filter(t => t.text.trim())
-        const newTags = [...tags]
-        const tagIndex = tags.findIndex((t, i) => {
-            const validIndex = validTags.indexOf(t)
-            return validIndex === selectedLineIndex
-        })
-
-        if (tagIndex >= 0) {
-            newTags[tagIndex] = {
-                ...newTags[tagIndex],
-                weight: Math.max(newTags[tagIndex].weight - 0.5, 0.5)
-            }
-            setTags(newTags)
-            onUpdateTags(module.name, newTags)
-        }
-    }
-
-    // 将标签转换为显示文本（带权重）
-    const getDisplayText = (): string => {
-        return tags
-            .filter(tag => tag.text.trim()) // 过滤空标签
+        const formatted = module.tags
             .map(tag => {
-                // 如果权重不是默认值 1.0，使用 NovelAI 格式显示
                 if (Math.abs(tag.weight - 1.0) > 0.01) {
                     return `${tag.weight.toFixed(1)}::${tag.text}::`
                 }
                 return tag.text
             })
-            .join('\n')
+            .join(', ')
+        setTextValue(formatted)
+    }, [module.tags])
+
+    /**
+     * 解析文本为标签数组
+     */
+    const parseTags = (text: string): TagDto[] => {
+        const segments = text.split(/,|\n/)
+        const newTags: TagDto[] = []
+
+        segments.forEach(seg => {
+            const trimmed = seg.trim()
+            if (!trimmed) return
+
+            let tagText = trimmed
+            let weight = 1.0
+
+            const weightMatch = trimmed.match(/^([\d.]+)::(.+)::$/)
+            if (weightMatch) {
+                weight = parseFloat(weightMatch[1])
+                tagText = weightMatch[2].trim()
+            }
+
+            if (tagText) {
+                newTags.push({
+                    id: generateId(),
+                    text: tagText,
+                    weight: weight
+                })
+            }
+        })
+
+        return newTags
     }
 
-    // 获取当前选中标签的权重
-    const getSelectedWeight = (): number => {
-        if (selectedLineIndex === null) return 1.0
-        const validTags = tags.filter(t => t.text.trim())
-        const tag = validTags[selectedLineIndex]
-        return tag ? tag.weight : 1.0
+    /**
+     * 检测选中文本的权重
+     */
+    const detectSelectionWeight = () => {
+        const textarea = textareaRef.current
+        if (!textarea) return
+
+        const selStart = textarea.selectionStart
+        const selEnd = textarea.selectionEnd
+
+        if (selStart === selEnd) {
+            setShowWeightButtons(false)
+            return
+        }
+
+        const selectedText = textarea.value.substring(selStart, selEnd).trim()
+        if (!selectedText) {
+            setShowWeightButtons(false)
+            return
+        }
+
+        // 检查选中文本是否已经有权重格式
+        const weightMatch = selectedText.match(/^([\d.]+)::(.+)::$/)
+        if (weightMatch) {
+            setCurrentWeight(parseFloat(weightMatch[1]))
+        } else {
+            setCurrentWeight(1.0)
+        }
+
+        setShowWeightButtons(true)
     }
 
-    const selectedWeight = getSelectedWeight()
+    const handleSelectionChange = () => {
+        detectSelectionWeight()
+    }
+
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setTextValue(e.target.value)
+    }
+
+    const handleBlur = () => {
+        const newTags = parseTags(textValue)
+        onUpdateTags(module.name, newTags)
+    }
+
+    /**
+     * 调整选中文本的权重
+     */
+    const adjustWeight = (delta: number) => {
+        const textarea = textareaRef.current
+        if (!textarea) return
+
+        const selStart = textarea.selectionStart
+        const selEnd = textarea.selectionEnd
+
+        if (selStart === selEnd) return
+
+        const beforeSelection = textValue.substring(0, selStart)
+        const selectedText = textValue.substring(selStart, selEnd)
+        const afterSelection = textValue.substring(selEnd)
+
+        // 移除选中文本中已有的权重格式
+        let cleanText = selectedText.trim()
+        const weightMatch = cleanText.match(/^([\d.]+)::(.+)::$/)
+        if (weightMatch) {
+            cleanText = weightMatch[2]
+        }
+
+        // 计算新权重
+        const newWeight = Math.max(0.5, Math.min(5.0, currentWeight + delta))
+
+        // 生成新的带权重文本
+        let newSelectedText = selectedText
+        if (Math.abs(newWeight - 1.0) > 0.01) {
+            newSelectedText = `${newWeight.toFixed(1)}::${cleanText}::`
+        } else {
+            newSelectedText = cleanText
+        }
+
+        // 组合新文本
+        const newText = beforeSelection + newSelectedText + afterSelection
+        setTextValue(newText)
+        setCurrentWeight(newWeight)
+
+        // 保持选中状态
+        setTimeout(() => {
+            if (textarea) {
+                const newSelEnd = selStart + newSelectedText.length
+                textarea.setSelectionRange(selStart, newSelEnd)
+                textarea.focus()
+            }
+        }, 0)
+
+        // 立即同步到 store
+        const newTags = parseTags(newText)
+        onUpdateTags(module.name, newTags)
+    }
 
     return (
         <div className="flex flex-col rounded-lg border border-zinc-800 bg-zinc-900/30 backdrop-blur-sm overflow-hidden h-32 relative">
-
-            {/* 卡片头部 */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/50 bg-zinc-900/50">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800/50 bg-zinc-900/50">
                 <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
                     <IconComponent className="w-3 h-3 text-cyan-500" />
                     {module.displayName}
                 </span>
 
-                {/* 锁定按钮 */}
-                <button
-                    onClick={() => onToggleLock(module.name)}
-                    className="transition-colors"
-                >
+                <button onClick={() => onToggleLock(module.name)}>
                     {module.locked ? (
                         <Lock className="w-3 h-3 text-cyan-500/80" />
                     ) : (
@@ -221,44 +201,36 @@ const ModuleCard: FC<ModuleCardProps> = ({
                 </button>
             </div>
 
-            {/* 可编辑文本区域 */}
             <textarea
                 ref={textareaRef}
-                value={getDisplayText()}
+                value={textValue}
                 onChange={handleTextChange}
+                onBlur={handleBlur}
                 onSelect={handleSelectionChange}
                 onClick={handleSelectionChange}
                 onKeyUp={handleSelectionChange}
                 disabled={module.locked}
-                placeholder={module.locked ? 'Locked' : 'Type tags here, one per line...'}
+                placeholder={module.locked ? 'Locked' : 'Add tags (comma separated)...'}
                 className="flex-1 p-3 bg-transparent text-zinc-300 text-xs font-mono resize-none focus:outline-none placeholder:text-zinc-600 disabled:text-zinc-500 disabled:cursor-not-allowed"
-                style={{ lineHeight: '1.5' }}
+                style={{ lineHeight: '1.6' }}
             />
 
-            {/* 权重调整按钮（选中文本时显示） */}
-            {showWeightButtons && !module.locked && selectedLineIndex !== null && (
-                <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-zinc-900 border border-zinc-700 rounded-md p-1 shadow-lg">
-                    {/* 减权按钮 */}
+            {showWeightButtons && !module.locked && (
+                <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-zinc-900 border border-zinc-700 rounded-md p-0.5 shadow-xl z-10 scale-90 origin-bottom-right">
                     <button
-                        onClick={handleDecreaseWeight}
-                        disabled={selectedWeight <= 0.5}
-                        className="p-1 hover:bg-zinc-800 rounded text-zinc-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Decrease weight (-0.5)"
+                        onMouseDown={(e) => { e.preventDefault(); adjustWeight(-0.5); }}
+                        disabled={currentWeight <= 0.5}
+                        className="p-1 hover:bg-zinc-800 rounded text-zinc-400 disabled:opacity-30"
                     >
                         <Minus className="w-3 h-3" />
                     </button>
-
-                    {/* 当前权重显示 */}
-                    <span className="text-[10px] text-cyan-400 font-mono px-1 min-w-[40px] text-center">
-                        ×{selectedWeight.toFixed(1)}
+                    <span className="text-[10px] text-cyan-400 font-mono px-1 min-w-[36px] text-center">
+                        {currentWeight.toFixed(1)}
                     </span>
-
-                    {/* 加权按钮 */}
                     <button
-                        onClick={handleIncreaseWeight}
-                        disabled={selectedWeight >= 5.0}
-                        className="p-1 hover:bg-zinc-800 rounded text-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Increase weight (+0.5)"
+                        onMouseDown={(e) => { e.preventDefault(); adjustWeight(0.5); }}
+                        disabled={currentWeight >= 5.0}
+                        className="p-1 hover:bg-zinc-800 rounded text-cyan-400 disabled:opacity-30"
                     >
                         <Plus className="w-3 h-3" />
                     </button>

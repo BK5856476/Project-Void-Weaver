@@ -20,6 +20,7 @@ import ModuleGrid from './ModuleGrid'
 import { useVoidWeaverStore } from '@/store/useVoidWeaverStore'
 import { analyzeImage, generateImage, refineModules } from '@/api/client'
 import { useToast } from '@/hooks/useToast'
+import { assemblePrompt } from '@/lib/utils'
 
 const CodexGrimoire: FC = () => {
     const { showToast } = useToast()
@@ -49,7 +50,7 @@ const CodexGrimoire: FC = () => {
 
     /**
      * 处理 Decipher 按钮点击
-     * 调用 Gemini API 分析图片并提取 7 个模块
+     * 调用 Gemini API 分析图片并提取 8 个模块
      */
     const handleDecipher = async () => {
         // 验证必需数据
@@ -114,17 +115,8 @@ const CodexGrimoire: FC = () => {
             setIsGenerating(true)
             console.log('开始生成图片...')
 
-            // 组装 prompt（将所有标签转换为字符串）
-            const prompt = modules
-                .flatMap(module => module.tags)
-                .map(tag => {
-                    // NovelAI 格式：weight::tag::
-                    if (engine === 'novelai' && Math.abs(tag.weight - 1.0) > 0.01) {
-                        return `${tag.weight.toFixed(1)}::${tag.text}::`
-                    }
-                    return tag.text
-                })
-                .join(', ')
+            // 组装 prompt（使用工具函数）
+            const prompt = assemblePrompt(modules, engine)
 
             console.log('生成的 prompt:', prompt)
 
@@ -154,6 +146,26 @@ const CodexGrimoire: FC = () => {
             })
         } finally {
             setIsGenerating(false)
+        }
+    }
+
+    /**
+     * 处理复制 Prompt 按钮点击
+     */
+    const handleCopy = async () => {
+        if (modules.length === 0 || modules.every(m => m.tags.length === 0)) {
+            showToast({ type: 'warning', message: '没有可复制的提示词！' })
+            return
+        }
+
+        const prompt = assemblePrompt(modules, engine)
+
+        try {
+            await navigator.clipboard.writeText(prompt)
+            showToast({ type: 'success', message: 'The prompt has been copied to the clipboard.' })
+        } catch (error) {
+            console.error('复制失败:', error)
+            showToast({ type: 'error', message: 'Failed to copy to clipboard.' })
         }
     }
 
@@ -216,6 +228,7 @@ const CodexGrimoire: FC = () => {
             <GrimoireToolbar
                 onDecipher={handleDecipher}
                 onManifest={handleManifest}
+                onCopy={handleCopy}
                 isAnalyzing={isAnalyzing}
                 isGenerating={isGenerating}
             />

@@ -27,8 +27,8 @@ const MainWorkspace: FC = () => {
             {!sidebarOpen && (
                 <button
                     onClick={toggleSidebar}
-                    className="absolute top-4 left-4 z-20 bg-zinc-900/90 hover:bg-zinc-800 text-cyan-400 p-2 rounded-md border border-zinc-700 shadow-lg transition-colors"
-                    title="打开侧边栏"
+                    className="absolute top-16 left-8 z-20 bg-zinc-900/90 hover:bg-zinc-800 text-cyan-400 p-2 rounded-md border border-zinc-700 shadow-lg transition-colors"
+                    title="Open Sidebar"
                 >
                     <Menu className="w-5 h-5" />
                 </button>

@@ -11,6 +11,7 @@
 
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { ModuleDto, EngineType } from '@/types'
 
 /**
  * Tailwind 类名合并工具
@@ -92,4 +93,39 @@ export function downloadImage(base64Data: string, filename: string = 'void-weave
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+}
+
+/**
+ * 组装完整提示词
+ * 
+ * @param modules - 模块数组
+ * @param engine - 生成引擎
+ * @returns 组装好的 prompt 字符串
+ * 
+ * 权重格式说明：
+ * - 权重 = 1.0：直接输出标签文本
+ * - 权重 ≠ 1.0：使用 {weight}::{tag}:: 格式（如 1.5::silver hair::）
+ */
+export function assemblePrompt(modules: ModuleDto[], engine: EngineType): string {
+    // 展平所有标签
+    const allTags = modules.flatMap(m => m.tags)
+
+    if (allTags.length === 0) return ''
+
+    // 根据引擎和权重格式化标签
+    const formattedTags = allTags.map(tag => {
+        const { text, weight } = tag
+
+        // 权重为 1.0 时不添加特殊格式
+        if (Math.abs(weight - 1.0) < 0.01) {
+            return text
+        }
+
+        // 使用 weight::tag:: 格式 (NovelAI 标准格式)
+        // 例如: 1.5::silver hair::
+        return `${weight.toFixed(1)}::${text}::`
+    })
+
+    // 用逗号和空格连接并返回
+    return formattedTags.join(', ')
 }
