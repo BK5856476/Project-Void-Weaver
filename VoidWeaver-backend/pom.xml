@@ -58,12 +58,9 @@
             <version>4.12.0</version>
         </dependency>
         
-        <!-- Google Vertex AI (for Gemini) -->
-        <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-aiplatform</artifactId>
-            <version>3.35.0</version>
-        </dependency>
+
+
+
         
         <!-- Spring Boot DevTools -->
         <dependency>

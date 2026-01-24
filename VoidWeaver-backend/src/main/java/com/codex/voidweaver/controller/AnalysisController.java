@@ -22,7 +22,7 @@ public class AnalysisController {
     private final GeminiService geminiService;
 
     /**
-     * 分析图片并提取7个模块
+     * 分析图片并提取8个模块
      * POST /api/analyze
      */
     @PostMapping("/analyze")
