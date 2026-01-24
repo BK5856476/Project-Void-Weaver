@@ -22,7 +22,36 @@ Dependencies:
   - Spring Boot DevTools (可选)
 ```
 
-### 1.2 推荐项目结构
+### 1.2 添加 Google GenAI SDK 依赖
+
+在 `pom.xml` 中添加 Google GenAI SDK：
+
+```xml
+<dependencies>
+  <!-- Spring Boot 依赖 -->
+  <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+  </dependency>
+  
+  <dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <optional>true</optional>
+  </dependency>
+  
+  <!-- Google GenAI SDK -->
+  <dependency>
+    <groupId>com.google.genai</groupId>
+    <artifactId>google-genai</artifactId>
+    <version>1.0.0</version>
+  </dependency>
+</dependencies>
+```
+
+> **注意**: Google GenAI SDK 会自动从环境变量 `GEMINI_API_KEY` 读取 API Key。但在本项目中，我们从前端请求中获取 API Key，因此需要手动传递。
+
+### 1.3 推荐项目结构
 
 ```
 VoidWeaver-backend/
@@ -212,42 +241,163 @@ public class RefineController {
 
 ## 4. GeminiService 实现（核心）
 
-### 4.1 分析图片 System Prompt
+### 4.1 使用 Google GenAI SDK
 
 ```java
-private static final String ANALYZE_SYSTEM_PROMPT = """
-    You are an expert image analyst. Analyze the given image and extract descriptive tags into 8 categories.
-    
-    Return a JSON object with this exact structure:
-    {
-      "modules": [
-        {
-          "name": "style",
-          "displayName": "Style",
-          "locked": false,
-          "tags": [{"id": "uuid", "text": "tag text", "weight": 1.0}]
-        },
-        // ... 8 modules total
-      ],
-      "rawPrompt": "all tags joined as comma-separated string"
+@Service
+public class GeminiService {
+
+    private final ObjectMapper objectMapper;
+
+    public GeminiService() {
+        this.objectMapper = new ObjectMapper();
     }
-    
-    The 8 modules are:
-    1. style - Art style, artistic references
-    2. subject - Main character/object
-    3. pose - Action, posture, viewing angle
-    4. costume - Clothing, accessories
-    5. background - Scene, location
-    6. composition - Camera angle, framing
-    7. atmosphere - Lighting, mood
-    8. extra - Additional details
-    
-    Generate unique UUIDs for each tag ID.
-    Return ONLY valid JSON, no markdown.
-    """;
+
+    /**
+     * 分析图片 - 使用 Gemini Vision API 提取 8 个模块
+     */
+    public AnalyzeResponse analyzeImage(String imageData, String apiKey) {
+        try {
+            // 创建 Gemini 客户端（手动传入 API Key）
+            Client client = new Client.Builder()
+                .apiKey(apiKey)
+                .build();
+
+            // 构建请求内容
+            Content content = Content.newBuilder()
+                .addPart(Part.newBuilder().setText(ANALYZE_SYSTEM_PROMPT))
+                .addPart(Part.newBuilder()
+                    .setInlineData(Blob.newBuilder()
+                        .setMimeType("image/png")
+                        .setData(ByteString.copyFrom(Base64.getDecoder().decode(imageData)))
+                        .build())
+                    .build())
+                .build();
+
+            // 配置生成参数（强制 JSON 输出）
+            GenerationConfig config = GenerationConfig.newBuilder()
+                .setResponseMimeType("application/json")
+                .build();
+
+            // 调用 Gemini API
+            GenerateContentResponse response = client.models()
+                .generateContent("gemini-2.0-flash-exp", content, config);
+
+            // 解析 JSON 响应
+            String jsonResponse = response.text();
+            return objectMapper.readValue(jsonResponse, AnalyzeResponse.class);
+
+        } catch (Exception e) {
+            throw new ApiException("Gemini API 调用失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 精炼模块 - 使用自然语言指令更新未锁定的模块
+     */
+    public List<ModuleDto> refineModules(
+        List<ModuleDto> unlockedModules, 
+        String instruction, 
+        String apiKey
+    ) {
+        try {
+            Client client = new Client.Builder()
+                .apiKey(apiKey)
+                .build();
+
+            // 构建 System Prompt
+            String refinePrompt = buildRefinePrompt(unlockedModules, instruction);
+
+            // 调用 Gemini
+            GenerateContentResponse response = client.models()
+                .generateContent(
+                    "gemini-2.0-flash-exp",
+                    refinePrompt,
+                    GenerationConfig.newBuilder()
+                        .setResponseMimeType("application/json")
+                        .build()
+                );
+
+            // 解析响应
+            String jsonResponse = response.text();
+            RefineResponse refineResponse = objectMapper.readValue(
+                jsonResponse, 
+                RefineResponse.class
+            );
+
+            return refineResponse.getModules();
+
+        } catch (Exception e) {
+            throw new ApiException("Gemini Refine 失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 构建精炼指令的 System Prompt
+     */
+    private String buildRefinePrompt(List<ModuleDto> modules, String instruction) {
+        try {
+            String modulesJson = objectMapper.writeValueAsString(modules);
+            return String.format(REFINE_SYSTEM_PROMPT, instruction, modulesJson);
+        } catch (Exception e) {
+            throw new ApiException("构建 Prompt 失败: " + e.getMessage());
+        }
+    }
+
+    // System Prompts
+    private static final String ANALYZE_SYSTEM_PROMPT = """
+        You are an expert image analyst. Analyze the given image and extract descriptive tags into 8 categories.
+        
+        Return a JSON object with this exact structure:
+        {
+          "modules": [
+            {
+              "name": "style",
+              "displayName": "Style",
+              "locked": false,
+              "tags": [{"id": "uuid", "text": "tag text", "weight": 1.0}]
+            },
+            // ... 8 modules total
+          ],
+          "rawPrompt": "all tags joined as comma-separated string"
+        }
+        
+        The 8 modules are:
+        1. style - Art style, artistic references
+        2. subject - Main character/object
+        3. pose - Action, posture, viewing angle
+        4. costume - Clothing, accessories
+        5. background - Scene, location
+        6. composition - Camera angle, framing
+        7. atmosphere - Lighting, mood
+        8. extra - Additional details
+        
+        Generate unique UUIDs for each tag ID.
+        Return ONLY valid JSON, no markdown.
+        """;
+
+    private static final String REFINE_SYSTEM_PROMPT = """
+        You are an AI prompt editor. Update the following modules according to the user instruction.
+        
+        User instruction: %s
+        
+        Current modules: %s
+        
+        Return a JSON object with:
+        {
+          "modules": [updated modules with same structure]
+        }
+        
+        Keep the same structure: name, displayName, locked, tags.
+        Generate new UUIDs for modified tags.
+        Return ONLY valid JSON.
+        """;
+}
 ```
 
-### 4.2 调用 Gemini API
+### 4.2 方法二：使用 REST API（备选方案）
+
+如果 Google GenAI SDK 有问题，可以使用传统的 REST API 方式：
 
 ```java
 @Service
@@ -259,7 +409,7 @@ public class GeminiService {
 
     public AnalyzeResponse analyzeImage(String imageData, String apiKey) {
         // Gemini API endpoint
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=" + apiKey;
 
         // 构建请求体
         Map<String, Object> requestBody = buildAnalyzeRequest(imageData);
