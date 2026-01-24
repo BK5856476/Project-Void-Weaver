@@ -28,6 +28,8 @@ public class GeminiService {
         private final OkHttpClient httpClient;
         private final ObjectMapper objectMapper;
 
+        // private static final String GEMINI_API_URL =
+        // "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent";
         private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
         private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 

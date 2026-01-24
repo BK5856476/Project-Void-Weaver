@@ -17,14 +17,15 @@ import { FC } from 'react'
 import { Maximize2, Download } from 'lucide-react'
 import ViewToggle from './ViewToggle'
 import ImageUploadZone from './ImageUploadZone'
+import MatrixRain from '../ui/MatrixRain' // Import MatrixRain animation
 import { useVoidWeaverStore } from '@/store/useVoidWeaverStore'
 import { downloadImage } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 
 const VisualCortex: FC = () => {
     const { showToast } = useToast()
-    // 从全局状态获取当前视图和生成的图片
-    const { currentView, generatedImage } = useVoidWeaverStore()
+    // 从全局状态获取当前视图、生成的图片以及是否正在分析
+    const { currentView, generatedImage, isAnalyzing } = useVoidWeaverStore()
 
     // 处理下载图片
     const handleDownload = () => {
@@ -49,6 +50,9 @@ const VisualCortex: FC = () => {
     return (
         // 主容器：flex 列布局，右边框，半透明背景
         <div className="flex-1 border-r border-zinc-800 bg-zinc-950/50 flex flex-col relative overflow-hidden">
+
+            {/* Loading Overlay - Matrix Effect */}
+            {isAnalyzing && <MatrixRain />}
 
             {/* 网格背景图案（赛博朋克风格） */}
             <div

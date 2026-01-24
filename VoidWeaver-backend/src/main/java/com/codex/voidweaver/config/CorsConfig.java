@@ -3,6 +3,7 @@ package com.codex.voidweaver.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.lang.NonNull;
 
 /**
  * CORS configuration to allow frontend access
@@ -12,13 +13,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class CorsConfig implements WebMvcConfigurer {
 
     @Override
-    public void addCorsMappings(CorsRegistry registry) {
+    public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOrigins(
-                    "http://localhost:5173",           // Local Vite dev server
-                    "http://localhost:3000",           // Alternative local port
-                    "https://*.vercel.app",            // Vercel deployments
-                    "https://voidweaver.vercel.app"    // Production domain
+                        "http://localhost:5173", // Local Vite dev server
+                        "http://localhost:3000", // Alternative local port
+                        "https://*.vercel.app", // Vercel deployments
+                        "https://voidweaver.vercel.app" // Production domain
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
