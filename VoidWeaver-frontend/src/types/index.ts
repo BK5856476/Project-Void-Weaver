@@ -13,7 +13,7 @@ export interface TagDto {
 }
 
 /**
- * 模块对象 - 7个维度之一
+ * 模块对象 - 8个维度之一
  */
 export interface ModuleDto {
     /** 模块名称 */
@@ -27,7 +27,7 @@ export interface ModuleDto {
 }
 
 /**
- * 模块类型枚举 - 7个核心维度
+ * 模块类型枚举 - 8个核心维度（7个标准 + 1个额外描述）
  */
 export type ModuleType =
     | 'style'        // 画风
@@ -37,6 +37,7 @@ export type ModuleType =
     | 'background'   // 背景
     | 'composition'  // 构图
     | 'atmosphere'   // 氛围
+    | 'extra'        // 额外描述
 
 /**
  * 引擎类型枚举

@@ -1,38 +1,71 @@
+/**
+ * 工具函数库 - 通用辅助函数
+ * 
+ * 包含：
+ * - cn(): Tailwind 类名合并工具
+ * - generateId(): 生成唯一 ID
+ * - formatWeight(): 格式化权重显示
+ * - fileToBase64(): 图片文件转 Base64
+ * - downloadImage(): 下载 Base64 图片
+ */
+
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
 /**
- * Tailwind class name merger utility
- * Combines clsx for conditional classes and tailwind-merge to handle conflicts
+ * Tailwind 类名合并工具
+ * 
+ * 功能：
+ * - 使用 clsx 处理条件类名
+ * - 使用 tailwind-merge 解决类名冲突
+ * 
+ * 示例：
+ * cn('px-2 py-1', condition && 'bg-blue-500', 'px-4') 
+ * // 结果：'py-1 bg-blue-500 px-4' (px-4 覆盖 px-2)
  */
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs))
 }
 
 /**
- * Generate a unique ID
+ * 生成唯一 ID
+ * 
+ * 格式：时间戳-随机字符串
+ * 示例：'1706000000000-abc123def'
  */
 export function generateId(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 }
 
 /**
- * Format weight for display (e.g., 1.05 -> "×1.05")
+ * 格式化权重显示
+ * 
+ * @param weight - 权重值（0.5 - 5.0）
+ * @returns 格式化字符串，如 "×1.05"
+ * 
+ * 示例：
+ * formatWeight(1.05) // "×1.05"
+ * formatWeight(0.95) // "×0.95"
  */
 export function formatWeight(weight: number): string {
     return `×${weight.toFixed(2)}`
 }
 
 /**
- * Convert image file to base64 string
+ * 将图片文件转换为 Base64 字符串
+ * 
+ * @param file - 图片文件对象
+ * @returns Promise<string> - Base64 编码的图片数据（不含 data URL 前缀）
+ * 
+ * 注意：返回的字符串已移除 "data:image/png;base64," 前缀
  */
 export function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader()
-        reader.readAsDataURL(file)
+        reader.readAsDataURL(file) // 读取文件为 Data URL
         reader.onload = () => {
             const result = reader.result as string
-            // Remove data URL prefix (data:image/png;base64,)
+            // 移除 Data URL 前缀 (data:image/png;base64,)
             const base64 = result.split(',')[1]
             resolve(base64)
         }
@@ -41,7 +74,16 @@ export function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Download base64 image as file
+ * 下载 Base64 图片为文件
+ * 
+ * @param base64Data - Base64 编码的图片数据
+ * @param filename - 下载的文件名（默认：'void-weaver-output.png'）
+ * 
+ * 工作原理：
+ * 1. 创建一个临时 <a> 元素
+ * 2. 设置 href 为 Data URL
+ * 3. 触发点击下载
+ * 4. 移除临时元素
  */
 export function downloadImage(base64Data: string, filename: string = 'void-weaver-output.png') {
     const link = document.createElement('a')
