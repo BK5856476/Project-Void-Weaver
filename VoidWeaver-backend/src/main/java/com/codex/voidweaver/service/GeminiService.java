@@ -28,7 +28,7 @@ public class GeminiService {
         private final OkHttpClient httpClient;
         private final ObjectMapper objectMapper;
 
-        private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent";
+        private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
         private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
         /**
@@ -36,7 +36,7 @@ public class GeminiService {
          * Uses geminiApiKey from frontend
          */
         public AnalyzeResponse analyzeImage(AnalyzeRequest request) {
-                log.info("Analyzing image with Gemini 3 Pro API...");
+                log.info("Analyzing image with Gemini 2.0 Flash API...");
 
                 try {
                         Map<String, Object> requestBody = buildAnalyzeRequestBody(request.getImageData());
@@ -50,8 +50,11 @@ public class GeminiService {
 
                         try (Response response = httpClient.newCall(httpRequest).execute()) {
                                 if (!response.isSuccessful()) {
-                                        throw new IOException("Gemini API call failed: " + response.code() + " "
-                                                        + response.message());
+                                        String errorBody = response.body() != null ? response.body().string() : "null";
+                                        log.error("Gemini API Verification Failed. Code: {}, Body: {}", response.code(),
+                                                        errorBody);
+                                        throw new IOException(
+                                                        "Gemini API failed: " + response.code() + " " + errorBody);
                                 }
 
                                 String responseBody = response.body().string();
@@ -91,8 +94,11 @@ public class GeminiService {
 
                         try (Response response = httpClient.newCall(httpRequest).execute()) {
                                 if (!response.isSuccessful()) {
-                                        throw new IOException("Gemini API call failed: " + response.code() + " "
-                                                        + response.message());
+                                        String errorBody = response.body() != null ? response.body().string() : "null";
+                                        log.error("Gemini Refine Failed. Code: {}, Body: {}", response.code(),
+                                                        errorBody);
+                                        throw new IOException(
+                                                        "Gemini Refine failed: " + response.code() + " " + errorBody);
                                 }
 
                                 String responseBody = response.body().string();
