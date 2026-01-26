@@ -151,9 +151,17 @@ const ApiKeyInput: FC = () => {
                             value={googleCredentials}
                             onChange={(e) => setGoogleCredentials(e.target.value)}
                             placeholder='Enter Key or JSON here...'
-                            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-md p-2 focus:outline-none focus:border-cyan-500 font-mono resize-none"
+                            style={{ WebkitTextSecurity: showGoogle ? 'none' : 'disc' } as any}
+                            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-md p-2 pr-8 focus:outline-none focus:border-cyan-500 font-mono resize-none"
                             rows={3}
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowGoogle(!showGoogle)}
+                            className="absolute right-2 top-2 text-zinc-600 hover:text-zinc-400"
+                        >
+                            {showGoogle ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        </button>
                     </div>
                 </div>
             )}
