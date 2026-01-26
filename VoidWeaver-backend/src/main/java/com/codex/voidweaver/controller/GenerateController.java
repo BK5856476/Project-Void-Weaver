@@ -27,15 +27,9 @@ public class GenerateController {
      */
     @PostMapping("/generate")
     public ResponseEntity<GenerateResponse> generateImage(@Valid @RequestBody GenerateRequest request) {
-        log.info("Received generate request with engine: {}", request.getEngine());
-
-        try {
-            GenerateResponse response = imageService.generateImage(request);
-            log.info("Image generation completed successfully");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Image generation failed: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to generate image: " + e.getMessage(), e);
-        }
+        log.info("Received generate request for engine: {}", request.getEngine());
+        GenerateResponse response = imageService.generateImage(request);
+        log.info("Image generation process initiated or completed");
+        return ResponseEntity.ok(response);
     }
 }

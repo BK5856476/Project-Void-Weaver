@@ -139,15 +139,18 @@ const ApiKeyInput: FC = () => {
 
             {/* Google Vertex AI 凭证（当引擎为 Google Imagen 时显示） */}
             {engine === 'google-imagen' && (
-                <div>
-                    <label className="text-[10px] text-zinc-600 mb-1 block">
-                        Google Vertex AI Credentials
+                <div className="space-y-1">
+                    <label className="text-[10px] text-zinc-600 block">
+                        Google Credentials / API Key
                     </label>
+                    <p className="text-[9px] text-zinc-500 italic pb-1">
+                        Tip: You can use your Gemini API Key here if you don't have a specific GCP JSON.
+                    </p>
                     <div className="relative">
                         <textarea
                             value={googleCredentials}
                             onChange={(e) => setGoogleCredentials(e.target.value)}
-                            placeholder='{"type": "service_account", ...}'
+                            placeholder='Enter Key or JSON here...'
                             className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-md p-2 focus:outline-none focus:border-cyan-500 font-mono resize-none"
                             rows={3}
                         />

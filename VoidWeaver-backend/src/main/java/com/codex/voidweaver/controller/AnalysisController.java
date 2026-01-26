@@ -28,14 +28,8 @@ public class AnalysisController {
     @PostMapping("/analyze")
     public ResponseEntity<AnalyzeResponse> analyzeImage(@Valid @RequestBody AnalyzeRequest request) {
         log.info("Received analyze request");
-
-        try {
-            AnalyzeResponse response = geminiService.analyzeImage(request);
-            log.info("Analysis completed successfully");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Analysis failed: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to analyze image: " + e.getMessage(), e);
-        }
+        AnalyzeResponse response = geminiService.analyzeImage(request);
+        log.info("Analysis completed successfully");
+        return ResponseEntity.ok(response);
     }
 }

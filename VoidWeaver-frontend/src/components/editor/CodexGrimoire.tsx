@@ -106,8 +106,11 @@ const CodexGrimoire: FC = () => {
             showToast({ type: 'warning', message: '请先输入 NovelAI API Key！' })
             return
         }
-        if (engine === 'google-imagen' && !googleCredentials) {
-            showToast({ type: 'warning', message: '请先输入 Google Vertex AI 凭证！' })
+
+        // 如果是 Google 引擎，优先使用 googleCredentials，如果没有则尝试使用 geminiApiKey
+        const activeGoogleKey = googleCredentials || geminiApiKey
+        if (engine === 'google-imagen' && !activeGoogleKey) {
+            showToast({ type: 'warning', message: '请先输入 Gemini API Key 或 Google 凭证！' })
             return
         }
 
@@ -125,7 +128,7 @@ const CodexGrimoire: FC = () => {
                 prompt,
                 engine,
                 novelaiApiKey: engine === 'novelai' ? novelaiApiKey : undefined,
-                googleCredentials: engine === 'google-imagen' ? googleCredentials : undefined,
+                googleCredentials: engine === 'google-imagen' ? activeGoogleKey : undefined,
                 resolution,
                 steps,
                 scale,

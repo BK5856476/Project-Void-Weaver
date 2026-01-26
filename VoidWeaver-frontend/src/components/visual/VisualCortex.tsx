@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/useToast'
 const VisualCortex: FC = () => {
     const { showToast } = useToast()
     // 从全局状态获取当前视图、生成的图片以及是否正在分析
-    const { currentView, generatedImage, isAnalyzing } = useVoidWeaverStore()
+    const { currentView, generatedImage, isAnalyzing, isGenerating } = useVoidWeaverStore()
 
     // 处理下载图片
     const handleDownload = () => {
@@ -52,7 +52,12 @@ const VisualCortex: FC = () => {
         <div className="flex-1 border-r border-zinc-800 bg-zinc-950/50 flex flex-col relative overflow-hidden">
 
             {/* Loading Overlay - Matrix Effect */}
-            {isAnalyzing && <MatrixRain />}
+            {(isAnalyzing || isGenerating) && (
+                <MatrixRain
+                    title={isGenerating ? "MANIFESTING REALITY" : "ANALYZING REALITY"}
+                    subtitle={isGenerating ? "REWRITING VISUAL DATA..." : "DECODING VISUAL MATRIX..."}
+                />
+            )}
 
             {/* 网格背景图案（赛博朋克风格） */}
             <div

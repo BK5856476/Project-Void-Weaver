@@ -1,72 +1,226 @@
 package com.codex.voidweaver.service;
 
+import com.codex.voidweaver.exception.ApiException;
 import com.codex.voidweaver.model.dto.GenerateRequest;
 import com.codex.voidweaver.model.dto.GenerateResponse;
 import com.codex.voidweaver.model.enums.EngineType;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.*;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+
 /**
- * 图片生成服务
- * Handles image generation with NovelAI or Google Imagen
+ * 图片生成服务 - 真正对接 Google Gemini Image Generation
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ImageService {
 
-    /**
-     * 生成图片 - 根据引擎类型调用不同的API
-     */
+    private final ObjectMapper objectMapper;
+    private final OkHttpClient httpClient = new OkHttpClient.Builder()
+            .connectTimeout(Duration.ofSeconds(30))
+            .readTimeout(Duration.ofSeconds(120)) // 生成图片耗时较长
+            .build();
+
+    private static final String GEMINI_GEN_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent";
+    // Alternative models: gemini-2.5-flash-image or imagen-3.0-generate-001
+
+    private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
+
     public GenerateResponse generateImage(GenerateRequest request) {
         log.info("Generating image with engine: {}", request.getEngine());
 
-        if (request.getEngine() == EngineType.NOVELAI) {
+        if (request.getEngine() == EngineType.GOOGLE_IMAGEN) {
+            return generateWithGoogleGemini(request);
+        } else if (request.getEngine() == EngineType.NOVELAI) {
             return generateWithNovelAI(request);
-        } else if (request.getEngine() == EngineType.GOOGLE_IMAGEN) {
-            return generateWithGoogleImagen(request);
         } else {
-            throw new IllegalArgumentException("Unsupported engine type: " + request.getEngine());
+            throw new ApiException("Unsupported engine type: " + request.getEngine(), "INVALID_REQUEST");
         }
     }
 
     /**
-     * NovelAI V3 图片生成
+     * 使用 Google Gemini (Imagen) 进行图片生成
+     */
+    private GenerateResponse generateWithGoogleGemini(GenerateRequest request) {
+        log.info("Generating with Google Gemini Image Gen...");
+
+        // 从字段中获取 API Key
+        // 依照前端设计，Google 凭证可能存放在 googleCredentials 中
+        String apiKey = request.getGoogleCredentials();
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new ApiException("Google API Key/Credentials is required", "INVALID_API_KEY");
+        }
+
+        try {
+            // 构建请求体 (根据文档中的模态设置)
+            Map<String, Object> bodyMap = Map.of(
+                    "contents", List.of(Map.of(
+                            "parts", List.of(Map.of("text", request.getPrompt())))),
+                    "generationConfig", Map.of(
+                            "responseModalities", List.of("IMAGE") // 核心：请求输出图片
+                    ));
+
+            String jsonBody = objectMapper.writeValueAsString(bodyMap);
+
+            Request httpRequest = new Request.Builder()
+                    .url(GEMINI_GEN_URL)
+                    .addHeader("x-goog-api-key", apiKey) // 官方文档要求使用 Header 而不是 URL 参数
+                    .addHeader("Content-Type", "application/json")
+                    .post(RequestBody.create(jsonBody, JSON))
+                    .build();
+
+            try (Response response = httpClient.newCall(httpRequest).execute()) {
+                if (!response.isSuccessful()) {
+                    String error = response.body() != null ? response.body().string() : "Unknown error";
+                    log.error("Google Image Gen Failed: {} - {}", response.code(), error);
+                    throw new ApiException("Google Image Gen failed: " + response.code(), "IMAGEN_ERROR");
+                }
+
+                String responseBody = response.body().string();
+                return parseImageResponse(responseBody);
+            }
+
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to generate with Google: {}", e.getMessage(), e);
+            throw new ApiException("Image generation failed: " + e.getMessage(), "INTERNAL_ERROR");
+        }
+    }
+
+    /**
+     * 解析 Gemini 返回的图片数据
+     */
+    private GenerateResponse parseImageResponse(String json) throws Exception {
+        JsonNode root = objectMapper.readTree(json);
+        JsonNode candidates = root.path("candidates");
+
+        if (candidates.isEmpty()) {
+            throw new ApiException("Gemini returned no candidates", "IMAGEN_ERROR");
+        }
+
+        // 提取 Part 里的 inlineData
+        JsonNode parts = candidates.get(0).path("content").path("parts");
+        for (JsonNode part : parts) {
+            if (part.has("inlineData")) {
+                String base64Data = part.path("inlineData").path("data").asText();
+                return GenerateResponse.builder()
+                        .imageData(base64Data)
+                        .build();
+            }
+        }
+
+        throw new ApiException("No image data found in response", "IMAGEN_ERROR");
+    }
+
+    /**
+     * 使用 NovelAI 进行图片生成
      */
     private GenerateResponse generateWithNovelAI(GenerateRequest request) {
         log.info("Generating with NovelAI V3...");
 
-        // TODO: Implement actual NovelAI API call
-        // This will:
-        // 1. Format prompt with weight syntax (e.g., {1.05::tag::})
-        // 2. Call NovelAI /ai/generate-image endpoint
-        // 3. Handle binary stream response
-        // 4. Convert to base64
-        // 5. Return response
+        String apiKey = request.getNovelaiApiKey();
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new ApiException("NovelAI API Key is required", "INVALID_API_KEY");
+        }
 
-        // Placeholder response
-        return GenerateResponse.builder()
-                .imageData("base64_encoded_image_data_here")
-                .build();
+        try {
+            // 解析分辨率
+            String[] dimensions = request.getResolution().split("x");
+            int width = Integer.parseInt(dimensions[0]);
+            int height = Integer.parseInt(dimensions[1]);
+
+            // 构建 NovelAI 参数
+            Map<String, Object> parameters = new java.util.HashMap<>();
+            parameters.put("width", width);
+            parameters.put("height", height);
+            parameters.put("scale", request.getScale() != null ? request.getScale() : 6);
+            parameters.put("sampler", "k_euler");
+            parameters.put("steps", request.getSteps() != null ? request.getSteps() : 28);
+            parameters.put("n_samples", 1);
+            parameters.put("ucPreset", 0);
+            parameters.put("qualityToggle", true);
+            parameters.put("sm", false);
+            parameters.put("sm_dyn", false);
+            parameters.put("dynamic_thresholding", false);
+            parameters.put("controlnet_strength", 1.0);
+            parameters.put("legacy", false);
+            parameters.put("add_original_image", false);
+            parameters.put("cfg_rescale", 0.0);
+            parameters.put("noise_schedule", "native");
+
+            // 构建 NovelAI 请求体
+            Map<String, Object> bodyMap = new java.util.HashMap<>();
+            bodyMap.put("input", request.getPrompt());
+            bodyMap.put("model", "nai-diffusion-3");
+            bodyMap.put("action", "generate");
+            bodyMap.put("parameters", parameters);
+
+            String jsonBody = objectMapper.writeValueAsString(bodyMap);
+            String url = "https://image.novelai.net/ai/generate-image";
+
+            Request httpRequest = new Request.Builder()
+                    .url(url)
+                    .addHeader("Authorization", "Bearer " + apiKey)
+                    .addHeader("Content-Type", "application/json")
+                    .post(RequestBody.create(jsonBody, JSON))
+                    .build();
+
+            try (Response response = httpClient.newCall(httpRequest).execute()) {
+                if (!response.isSuccessful()) {
+                    String error = response.body() != null ? response.body().string() : "Unknown error";
+                    log.error("NovelAI Gen Failed: {} - {}", response.code(), error);
+
+                    String errorCode = "NOVELAI_ERROR";
+                    if (response.code() == 401 || response.code() == 403)
+                        errorCode = "INVALID_API_KEY";
+                    if (response.code() == 429)
+                        errorCode = "RATE_LIMITED";
+
+                    throw new ApiException("NovelAI generation failed: " + response.code(), errorCode);
+                }
+
+                // NovelAI 返回 ZIP 文件，需要解压提取第一张图片
+                byte[] zipData = response.body().bytes();
+                String base64Image = extractFirstImageFromZip(zipData);
+
+                return GenerateResponse.builder()
+                        .imageData(base64Image)
+                        .build();
+            }
+
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to generate with NovelAI: {}", e.getMessage(), e);
+            throw new ApiException("NovelAI generation failed: " + e.getMessage(), "INTERNAL_ERROR");
+        }
     }
 
     /**
-     * Google Imagen 图片生成
+     * 从 ZIP 文件中提取第一张图片并转为 Base64
      */
-    private GenerateResponse generateWithGoogleImagen(GenerateRequest request) {
-        log.info("Generating with Google Imagen...");
+    private String extractFirstImageFromZip(byte[] zipData) throws Exception {
+        try (java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(zipData);
+                java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(bis)) {
 
-        // TODO: Implement actual Google Imagen API call
-        // This will:
-        // 1. Format prompt for Imagen (detailed natural language)
-        // 2. Call Vertex AI Imagen API
-        // 3. Convert response to base64
-        // 4. Return response
+            java.util.zip.ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (!entry.isDirectory() && entry.getName().toLowerCase().endsWith(".png")) {
+                    byte[] imageBytes = zis.readAllBytes();
+                    return java.util.Base64.getEncoder().encodeToString(imageBytes);
+                }
+            }
 
-        // Placeholder response
-        return GenerateResponse.builder()
-                .imageData("base64_encoded_image_data_here")
-                .build();
+            throw new ApiException("No image found in NovelAI response", "NOVELAI_ERROR");
+        }
     }
 }

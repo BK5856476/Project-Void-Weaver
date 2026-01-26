@@ -1,6 +1,14 @@
 import { useEffect, useRef } from 'react'
 
-const MatrixRain = () => {
+interface MatrixRainProps {
+    title?: string
+    subtitle?: string
+}
+
+const MatrixRain = ({
+    title = "ANALYZING REALITY",
+    subtitle = "DECODING VISUAL MATRIX..."
+}: MatrixRainProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
     useEffect(() => {
@@ -75,10 +83,10 @@ const MatrixRain = () => {
                     className="text-cyan-400 font-mono text-xl tracking-[0.2em] font-bold"
                     style={{ textShadow: '0 0 10px rgba(34, 211, 238, 0.8), 0 0 20px rgba(34, 211, 238, 0.4)' }}
                 >
-                    ANALYZING REALITY
+                    {title}
                 </div>
                 <div className="text-cyan-600/70 font-mono text-xs tracking-widest">
-                    DECODING VISUAL MATRIX...
+                    {subtitle}
                 </div>
             </div>
         </div>

@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -55,8 +54,15 @@ public class GeminiService {
                                         String errorBody = response.body() != null ? response.body().string() : "null";
                                         log.error("Gemini API Verification Failed. Code: {}, Body: {}", response.code(),
                                                         errorBody);
-                                        throw new IOException(
-                                                        "Gemini API failed: " + response.code() + " " + errorBody);
+
+                                        String errorCode = "GEMINI_ERROR";
+                                        if (response.code() == 401 || response.code() == 403)
+                                                errorCode = "INVALID_API_KEY";
+                                        if (response.code() == 429)
+                                                errorCode = "RATE_LIMITED";
+
+                                        throw new com.codex.voidweaver.exception.ApiException(
+                                                        "Gemini API failed: " + response.code(), errorCode);
                                 }
 
                                 String responseBody = response.body().string();
@@ -99,8 +105,15 @@ public class GeminiService {
                                         String errorBody = response.body() != null ? response.body().string() : "null";
                                         log.error("Gemini Refine Failed. Code: {}, Body: {}", response.code(),
                                                         errorBody);
-                                        throw new IOException(
-                                                        "Gemini Refine failed: " + response.code() + " " + errorBody);
+
+                                        String errorCode = "GEMINI_ERROR";
+                                        if (response.code() == 401 || response.code() == 403)
+                                                errorCode = "INVALID_API_KEY";
+                                        if (response.code() == 429)
+                                                errorCode = "RATE_LIMITED";
+
+                                        throw new com.codex.voidweaver.exception.ApiException(
+                                                        "Gemini Refine failed: " + response.code(), errorCode);
                                 }
 
                                 String responseBody = response.body().string();
@@ -192,7 +205,8 @@ public class GeminiService {
                 JsonNode candidates = root.path("candidates");
 
                 if (candidates.isEmpty()) {
-                        throw new RuntimeException("No candidates in Gemini response");
+                        throw new com.codex.voidweaver.exception.ApiException("No candidates in Gemini response",
+                                        "GEMINI_ERROR");
                 }
 
                 String jsonContent = candidates.get(0)
@@ -211,7 +225,8 @@ public class GeminiService {
                 JsonNode candidates = root.path("candidates");
 
                 if (candidates.isEmpty()) {
-                        throw new RuntimeException("No candidates in Gemini response");
+                        throw new com.codex.voidweaver.exception.ApiException("No candidates in Gemini response",
+                                        "GEMINI_ERROR");
                 }
 
                 String jsonContent = candidates.get(0)

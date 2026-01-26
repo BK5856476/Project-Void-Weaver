@@ -28,14 +28,8 @@ public class RefineController {
     @PostMapping("/refine")
     public ResponseEntity<RefineResponse> refineModules(@Valid @RequestBody RefineRequest request) {
         log.info("Received refine request with instruction: {}", request.getInstruction());
-
-        try {
-            RefineResponse response = geminiService.refineModules(request);
-            log.info("Module refinement completed successfully");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Module refinement failed: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to refine modules: " + e.getMessage(), e);
-        }
+        RefineResponse response = geminiService.refineModules(request);
+        log.info("Module refinement completed successfully");
+        return ResponseEntity.ok(response);
     }
 }
