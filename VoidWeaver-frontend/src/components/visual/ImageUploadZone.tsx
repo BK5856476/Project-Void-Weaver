@@ -17,9 +17,19 @@ import { Upload } from 'lucide-react'
 import { useVoidWeaverStore } from '@/store/useVoidWeaverStore'
 import { fileToBase64 } from '@/lib/utils'
 
-const ImageUploadZone: FC = () => {
+interface ImageUploadZoneProps {
+    isGlowing?: boolean
+}
+
+const ImageUploadZone: FC<ImageUploadZoneProps> = ({ isGlowing = false }) => {
     // 从全局状态获取源图片数据
     const { sourceImage, setSourceImage } = useVoidWeaverStore()
+
+    // ... (logic remains same)
+
+    // Glow effect styles
+    const glowStyles = isGlowing ? "ring-2 ring-cyan-500 shadow-[0_0_30px_rgba(34,211,238,0.5)] scale-[1.02]" : ""
+
 
     /**
      * 处理拖拽放下事件
@@ -60,7 +70,7 @@ const ImageUploadZone: FC = () => {
     if (sourceImage) {
         return (
             <div className="flex-1 flex items-center justify-center p-8">
-                <div className="relative w-full h-full max-h-[600px] rounded-lg overflow-hidden border border-zinc-800">
+                <div className={`relative w-full h-full max-h-[600px] rounded-lg overflow-hidden border border-zinc-800 transition-all duration-500 ${glowStyles}`}>
                     {/* 显示图片预览 */}
                     <img
                         src={`data:image/png;base64,${sourceImage}`}
@@ -98,7 +108,7 @@ const ImageUploadZone: FC = () => {
             {/* 自定义上传区域（label 关联到隐藏的 input） */}
             <label
                 htmlFor="file-upload"
-                className="w-full h-full max-h-[600px] border-2 border-dashed border-zinc-800 rounded-lg flex flex-col items-center justify-center gap-4 bg-zinc-900/20 hover:bg-zinc-900/40 transition-colors group cursor-pointer"
+                className={`w-full h-full max-h-[600px] border-2 border-dashed border-zinc-800 rounded-lg flex flex-col items-center justify-center gap-4 bg-zinc-900/20 hover:bg-zinc-900/40 transition-all duration-500 group cursor-pointer ${glowStyles}`}
             >
                 {/* 上传图标（圆形容器） */}
                 <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 group-hover:border-cyan-500/50 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] transition-all">

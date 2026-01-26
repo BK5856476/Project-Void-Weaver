@@ -13,23 +13,56 @@
  * - 从 Zustand store 读取 currentView 和 generatedImage
  */
 
-import { FC } from 'react'
-import { Maximize2, Download } from 'lucide-react'
+import { FC, useState } from 'react'
+import { Maximize2, Download, ChevronLeft, ChevronRight, ArrowLeftFromLine } from 'lucide-react'
 import ViewToggle from './ViewToggle'
 import ImageUploadZone from './ImageUploadZone'
-import MatrixRain from '../ui/MatrixRain' // Import MatrixRain animation
+import MatrixRain from '../ui/MatrixRain'
 import { useVoidWeaverStore } from '@/store/useVoidWeaverStore'
 import { downloadImage } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 
 const VisualCortex: FC = () => {
     const { showToast } = useToast()
-    // 从全局状态获取当前视图、生成的图片以及是否正在分析
-    const { currentView, generatedImage, isAnalyzing, isGenerating } = useVoidWeaverStore()
+    const [isSourceGlowing, setIsSourceGlowing] = useState(false)
+
+    // 从全局状态获取所需数据
+    const {
+        currentView,
+        generatedHistory,
+        currentHistoryIndex,
+        setHistoryIndex,
+        isAnalyzing,
+        isGenerating,
+        setSourceImage,
+        setIsImg2Img,
+        setCurrentView
+    } = useVoidWeaverStore()
+
+    // ... (currentGeneratedImage logic) ...
+    const currentGeneratedImage =
+        generatedHistory.length > 0 && currentHistoryIndex >= 0
+            ? generatedHistory[currentHistoryIndex]
+            : null
+
+    // 设为底图处理
+    const handleSetAsInput = () => {
+        if (currentGeneratedImage) {
+            setSourceImage(currentGeneratedImage)
+            setIsImg2Img(true) // 自动开启图生图模式
+            setCurrentView('source') // 切换回源图片视图
+
+            // 触发发光动画
+            setIsSourceGlowing(true)
+            setTimeout(() => setIsSourceGlowing(false), 1000)
+
+            showToast({ type: 'success', message: '已设为底图！(Img2Img Mode Enabled)' })
+        }
+    }
 
     // 处理下载图片
     const handleDownload = () => {
-        if (!generatedImage) {
+        if (!currentGeneratedImage) {
             showToast({ type: 'warning', message: '没有可下载的图片！' })
             return
         }
@@ -39,11 +72,26 @@ const VisualCortex: FC = () => {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
             const filename = `void-weaver-${timestamp}.png`
 
-            downloadImage(generatedImage, filename)
+            downloadImage(currentGeneratedImage, filename)
             showToast({ type: 'success', message: '图片下载成功！' })
         } catch (error) {
             console.error('下载失败:', error)
             showToast({ type: 'error', message: '图片下载失败！' })
+        }
+    }
+
+    // 切换图片处理
+    const handlePrevImage = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (currentHistoryIndex > 0) {
+            setHistoryIndex(currentHistoryIndex - 1)
+        }
+    }
+
+    const handleNextImage = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (currentHistoryIndex < generatedHistory.length - 1) {
+            setHistoryIndex(currentHistoryIndex + 1)
         }
     }
 
@@ -76,14 +124,38 @@ const VisualCortex: FC = () => {
 
                 {/* 右侧：操作按钮 */}
                 <div className="flex items-center gap-2">
+                    {/* 分页指示器 (如果有超过1张图片) */}
+                    {generatedHistory.length > 1 && currentView === 'generated' && (
+                        <div className="flex items-center gap-1 mr-2 px-2 py-1 bg-zinc-900 rounded-full border border-zinc-800">
+                            {generatedHistory.map((_, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentHistoryIndex ? 'bg-cyan-500' : 'bg-zinc-600'
+                                        }`}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* 设为底图按钮 */}
+                    {currentView === 'generated' && currentGeneratedImage && (
+                        <button
+                            onClick={handleSetAsInput}
+                            className="p-2 rounded-md hover:bg-zinc-800 transition-colors group"
+                            title="设为底图 (Use as Input)"
+                        >
+                            <ArrowLeftFromLine className="w-4 h-4 text-cyan-500 group-hover:text-cyan-400" />
+                        </button>
+                    )}
+
                     {/* 下载按钮（仅在生成图片视图且有图片时显示） */}
-                    {currentView === 'generated' && generatedImage && (
+                    {currentView === 'generated' && currentGeneratedImage && (
                         <button
                             onClick={handleDownload}
                             className="p-2 rounded-md hover:bg-zinc-800 transition-colors group"
                             title="下载图片"
                         >
-                            <Download className="w-4 h-4 text-cyan-500 group-hover:text-cyan-400" />
+                            <Download className="w-4 h-4 text-zinc-400 group-hover:text-zinc-200" />
                         </button>
                     )}
 
@@ -94,19 +166,42 @@ const VisualCortex: FC = () => {
 
             {/* 内容区域：根据当前视图显示不同内容 */}
             {currentView === 'source' ? (
-                // 源图片视图：显示上传区
-                <ImageUploadZone />
+                // 源图片视图：显示上传区 (传递发光状态)
+                <ImageUploadZone isGlowing={isSourceGlowing} />
             ) : (
                 // 生成图片视图
-                <div className="flex-1 flex items-center justify-center p-8">
-                    {generatedImage ? (
+                <div className="flex-1 flex items-center justify-center p-8 relative group/view">
+                    {currentGeneratedImage ? (
                         // 如果有生成的图片，显示预览
-                        <div className="relative w-full h-full max-h-[600px] rounded-lg overflow-hidden border border-zinc-800">
+                        <div className="relative w-full h-full max-h-[600px] rounded-lg overflow-hidden border border-zinc-800 shadow-2xl bg-black/40 flex items-center justify-center">
                             <img
-                                src={`data:image/png;base64,${generatedImage}`}
+                                src={`data:image/png;base64,${currentGeneratedImage}`}
                                 alt="Generated"
-                                className="w-full h-full object-contain" // 保持宽高比
+                                className="max-w-full max-h-full object-contain" // 保持宽高比
                             />
+
+                            {/* 导航按钮 - 左 */}
+                            {generatedHistory.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={handlePrevImage}
+                                        disabled={currentHistoryIndex === 0}
+                                        className={`absolute left-4 p-2 rounded-full bg-black/50 hover:bg-black/80 text-white backdrop-blur-sm transition-all transform hover:scale-110 border border-white/10 ${currentHistoryIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'opacity-0 group-hover/view:opacity-100'
+                                            }`}
+                                    >
+                                        <ChevronLeft className="w-6 h-6" />
+                                    </button>
+
+                                    <button
+                                        onClick={handleNextImage}
+                                        disabled={currentHistoryIndex === generatedHistory.length - 1}
+                                        className={`absolute right-4 p-2 rounded-full bg-black/50 hover:bg-black/80 text-white backdrop-blur-sm transition-all transform hover:scale-110 border border-white/10 ${currentHistoryIndex === generatedHistory.length - 1 ? 'opacity-30 cursor-not-allowed' : 'opacity-0 group-hover/view:opacity-100'
+                                            }`}
+                                    >
+                                        <ChevronRight className="w-6 h-6" />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     ) : (
                         // 如果没有生成图片，显示占位提示

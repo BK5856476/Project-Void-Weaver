@@ -82,6 +82,10 @@ export interface GenerateRequest {
     steps: number
     /** 相关性/CFG Scale */
     scale: number
+    /** Img2Img 输入图片 (Base64) */
+    image?: string
+    /** Img2Img 重绘幅度 (0.0 - 0.99) */
+    strength?: number
 }
 
 /**
@@ -129,7 +133,8 @@ export interface VoidWeaverState {
 
     // Image Data
     sourceImage: string | null
-    generatedImage: string | null
+    generatedHistory: string[] // Store last 2 images
+    currentHistoryIndex: number // 0 or 1
 
     // Module Data
     modules: ModuleDto[]
@@ -139,6 +144,7 @@ export interface VoidWeaverState {
     isAnalyzing: boolean
     isGenerating: boolean
     isRefining: boolean
+    isImg2Img: boolean // Img2Img toggle state
     currentView: 'source' | 'generated'
     sidebarOpen: boolean
 
@@ -151,7 +157,16 @@ export interface VoidWeaverState {
     setSteps: (steps: number) => void
     setScale: (scale: number) => void
     setSourceImage: (image: string | null) => void
-    setGeneratedImage: (image: string | null) => void
+
+    /** 
+     * Add new generated image to history
+     * Maintain max 2 images, delete oldest if > 2
+     */
+    addGeneratedImage: (image: string) => void
+
+    /** Switch to previous/next image index */
+    setHistoryIndex: (index: number) => void
+
     setModules: (modules: ModuleDto[]) => void
     setRawPrompt: (prompt: string) => void
     updateModule: (moduleName: ModuleType, module: Partial<ModuleDto>) => void
@@ -163,4 +178,5 @@ export interface VoidWeaverState {
     setIsAnalyzing: (value: boolean) => void
     setIsGenerating: (value: boolean) => void
     setIsRefining: (value: boolean) => void
+    setIsImg2Img: (value: boolean) => void
 }

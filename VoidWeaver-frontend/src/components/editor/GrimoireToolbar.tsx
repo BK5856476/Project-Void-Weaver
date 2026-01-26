@@ -16,23 +16,27 @@
  */
 
 import { FC } from 'react'
-import { Terminal, Wand2, Zap, Copy } from 'lucide-react'
+import { Terminal, Wand2, Zap, Copy, Image as ImageIcon } from 'lucide-react'
 
 // Props 类型定义
 interface GrimoireToolbarProps {
     onDecipher: () => void      // Decipher 按钮点击回调
     onManifest: () => void       // MANIFEST 按钮点击回调
     onCopy: () => void           // 复制 Prompt 回调
+    onToggleImg2Img: () => void  // 切换 Img2Img 模式
     isAnalyzing?: boolean        // 是否正在分析
     isGenerating?: boolean       // 是否正在生成
+    isImg2Img?: boolean          // 是否启用 Img2Img
 }
 
 const GrimoireToolbar: FC<GrimoireToolbarProps> = ({
     onDecipher,
     onManifest,
     onCopy,
+    onToggleImg2Img,
     isAnalyzing = false,
-    isGenerating = false
+    isGenerating = false,
+    isImg2Img = false
 }) => {
     return (
         // 工具栏容器：固定高度，半透明背景，毛玻璃效果
@@ -48,6 +52,19 @@ const GrimoireToolbar: FC<GrimoireToolbarProps> = ({
 
             {/* 右侧：操作按钮组 */}
             <div className="flex gap-3">
+
+                {/* Img2Img 切换按钮 */}
+                <button
+                    onClick={onToggleImg2Img}
+                    className={`inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors h-9 px-3 border gap-2 ${isImg2Img
+                            ? 'bg-cyan-900/50 border-cyan-500 text-cyan-400'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-700'
+                        }`}
+                    title="Toggle Text-to-Image / Image-to-Image"
+                >
+                    <ImageIcon className="w-4 h-4" />
+                    {isImg2Img ? 'IMG2IMG' : 'TXT2IMG'}
+                </button>
 
                 {/* 复制按钮 */}
                 <button

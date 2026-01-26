@@ -46,4 +46,10 @@ public class GenerateRequest {
     @Min(value = 1, message = "Scale must be at least 1")
     @Max(value = 20, message = "Scale must not exceed 20")
     private Integer scale;
+
+    /** Img2Img 输入图片 (Base64) */
+    private String image;
+
+    /** Img2Img 重绘幅度 (0.0 - 0.99) */
+    private Double strength;
 }

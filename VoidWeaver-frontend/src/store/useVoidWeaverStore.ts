@@ -75,16 +75,18 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
 
             // ========== 图片数据 ==========
             sourceImage: null,          // 源图片（Base64）
-            generatedImage: null,       // 生成的图片（Base64）
+            generatedHistory: [],       // 生成历史（最多2张）
+            currentHistoryIndex: -1,    // 当前显示的图片索引
 
             // ========== 模块数据 ==========
             modules: initializeModules(), // 初始化 8 个空模块
             rawPrompt: '',              // 原始完整提示词
 
-            // ========== UI 状态 ==========
+            // ========== Android UI 状态 ==========
             isAnalyzing: false,         // 是否正在分析图片
             isGenerating: false,        // 是否正在生成图片
             isRefining: false,          // 是否正在精炼模块
+            isImg2Img: false,           // 是否启用图生图模式
             currentView: 'source',      // 当前视图：source（源图片）或 generated（生成图片）
             sidebarOpen: true,          // 侧边栏是否打开
 
@@ -131,9 +133,32 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
             setSourceImage: (image) => set({ sourceImage: image }),
 
             /**
-             * 设置生成的图片（Base64 字符串）
+             * 添加新生成的图片到历史记录
+             * 
+             * 逻辑：
+             * - 将新图片添加到数组末尾
+             * - 如果超过2张，删除最旧的（第一张）
+             * - 自动将当前索引指向最新图片
              */
-            setGeneratedImage: (image) => set({ generatedImage: image }),
+            addGeneratedImage: (image) =>
+                set((state) => {
+                    const newHistory = [...state.generatedHistory, image]
+
+                    // 保持最多2张
+                    if (newHistory.length > 2) {
+                        newHistory.shift() // 删除第一张（最旧）
+                    }
+
+                    return {
+                        generatedHistory: newHistory,
+                        currentHistoryIndex: newHistory.length - 1 // 指向最新
+                    }
+                }),
+
+            /**
+             * 切换当前显示的图片索引
+             */
+            setHistoryIndex: (index) => set({ currentHistoryIndex: index }),
 
             /**
              * 设置所有模块数据（通常在分析图片后调用）
@@ -233,6 +258,11 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
              * 设置是否正在精炼模块
              */
             setIsRefining: (value) => set({ isRefining: value }),
+
+            /**
+             * 设置是否启用图生图模式
+             */
+            setIsImg2Img: (value) => set({ isImg2Img: value }),
         }),
         { name: 'VoidWeaverStore' } // Redux DevTools 中显示的名称
     )

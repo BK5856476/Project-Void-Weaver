@@ -37,7 +37,7 @@ const CodexGrimoire: FC = () => {
         scale,
         modules,
         setModules,
-        setGeneratedImage,
+        addGeneratedImage,
         setCurrentView,
         isAnalyzing,
         setIsAnalyzing,
@@ -46,6 +46,8 @@ const CodexGrimoire: FC = () => {
         isRefining,
         setIsRefining,
         setRawPrompt,
+        isImg2Img,
+        setIsImg2Img,
     } = useVoidWeaverStore()
 
     /**
@@ -107,6 +109,12 @@ const CodexGrimoire: FC = () => {
             return
         }
 
+        // Img2Img 模式检查
+        if (isImg2Img && !sourceImage) {
+            showToast({ type: 'warning', message: 'Img2Img 模式需要先上传图片！' })
+            return
+        }
+
         // 如果是 Google 引擎，优先使用 googleCredentials，如果没有则尝试使用 geminiApiKey
         const activeGoogleKey = googleCredentials || geminiApiKey
         if (engine === 'google-imagen' && !activeGoogleKey) {
@@ -116,7 +124,7 @@ const CodexGrimoire: FC = () => {
 
         try {
             setIsGenerating(true)
-            console.log('开始生成图片...')
+            console.log('开始生成图片...', isImg2Img ? '(Img2Img Mode)' : '(Text2Img Mode)')
 
             // 组装 prompt（使用工具函数）
             const prompt = assemblePrompt(modules, engine)
@@ -132,10 +140,13 @@ const CodexGrimoire: FC = () => {
                 resolution,
                 steps,
                 scale,
+                // Img2Img 参数
+                image: isImg2Img && sourceImage ? sourceImage : undefined,
+                strength: isImg2Img ? 0.7 : undefined // 默认重绘幅度 0.7
             })
 
-            // 保存生成的图片
-            setGeneratedImage(response.imageData)
+            // 保存生成的图片（添加到历史）
+            addGeneratedImage(response.imageData)
             // 自动切换到 "New World" 视图
             setCurrentView('generated')
 
@@ -198,16 +209,32 @@ const CodexGrimoire: FC = () => {
                 geminiApiKey,
             })
 
+            console.log('精炼响应:', response)
+            console.log('当前模块:', modules)
+            console.log('响应模块数量:', response.modules.length)
+
             // 更新未锁定的模块
             const updatedModules = modules.map(module => {
                 // 如果模块被锁定，保持不变
-                if (module.locked) return module
+                if (module.locked) {
+                    console.log(`模块 ${module.name} 已锁定，跳过`)
+                    return module
+                }
 
                 // 否则，从响应中找到对应的更新
-                const updated = response.modules.find(m => m.name === module.name)
+                // 使用不区分大小写比较，防止模型输出大写名称导致匹配失败
+                const updated = response.modules.find(m => m.name.toLowerCase() === module.name.toLowerCase())
+
+                if (updated) {
+                    console.log(`✅ 找到模块 ${module.name} 的更新:`, updated)
+                } else {
+                    console.warn(`⚠️ 未找到模块 ${module.name} 的更新，保持原样`)
+                }
+
                 return updated || module
             })
 
+            console.log('更新后的模块:', updatedModules)
             setModules(updatedModules)
 
             console.log('精炼完成！', response)
@@ -232,8 +259,10 @@ const CodexGrimoire: FC = () => {
                 onDecipher={handleDecipher}
                 onManifest={handleManifest}
                 onCopy={handleCopy}
+                onToggleImg2Img={() => setIsImg2Img(!isImg2Img)}
                 isAnalyzing={isAnalyzing}
                 isGenerating={isGenerating}
+                isImg2Img={isImg2Img}
             />
 
             {/* 中间：模块网格区域 */}

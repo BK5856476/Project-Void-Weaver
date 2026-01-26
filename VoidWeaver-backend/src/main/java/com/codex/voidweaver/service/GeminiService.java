@@ -131,6 +131,7 @@ public class GeminiService {
         private Map<String, Object> buildAnalyzeRequestBody(String imageData) {
                 String systemPrompt = """
                                 You are an expert image analyst. Analyze the given image and extract descriptive tags into 8 categories.
+                                Provide all outputs in English only. Do not use any other language.
 
                                 Return a JSON object with this exact structure:
                                 {
@@ -139,12 +140,19 @@ public class GeminiService {
                                       "name": "style",
                                       "displayName": "Style",
                                       "locked": false,
-                                      "tags": [{"id": "uuid", "text": "tag text", "weight": 1.0}]
+                                      "tags": [
+                                        {"id": "uuid-here", "text": "tag description", "weight": 1.0}
+                                      ]
                                     },
                                     // ... 8 modules total
                                   ],
                                   "rawPrompt": "all tags joined as comma-separated string"
                                 }
+
+                                IMPORTANT: Each tag object MUST have exactly these 3 fields:
+                                - "id": a unique UUID (generate with standard UUID format)
+                                - "text": the tag content in English (e.g. "silver hair", "dynamic pose")
+                                - "weight": a number, default 1.0
 
                                 The 8 modules are:
                                 1. style - Art style, artistic references
@@ -156,8 +164,8 @@ public class GeminiService {
                                 7. atmosphere - Lighting, mood
                                 8. extra - Additional details
 
-                                Generate unique UUIDs for each tag ID.
                                 Return ONLY valid JSON, no markdown.
+                                Ensure all tag text values are in English.
                                 """;
 
                 return Map.of(
@@ -177,6 +185,7 @@ public class GeminiService {
                 String systemPrompt = String.format(
                                 """
                                                 You are an AI prompt editor. Update the following modules according to the user instruction.
+                                                Provide all outputs in English only. Even if the instruction is in Chinese, translate and output the result in English.
 
                                                 User instruction: %s
 
@@ -184,12 +193,24 @@ public class GeminiService {
 
                                                 Return a JSON object with:
                                                 {
-                                                  "modules": [updated modules with same structure]
+                                                  "modules": [ALL modules with updates applied]
                                                 }
 
+                                                IMPORTANT: You MUST return ALL modules that were provided in "Current modules", even if you only modified some of them.
+                                                - If a module is relevant to the instruction, update its tags accordingly
+                                                - If a module is NOT relevant to the instruction, return it unchanged with its original tags
+                                                - The output "modules" array must have the SAME NUMBER of modules as the input
+
+                                                CRITICAL: Each tag object MUST have exactly these 3 fields:
+                                                - "id": a unique UUID
+                                                - "text": the tag content in English (NOT "name" or "displayName"!)
+                                                - "weight": a number, default 1.0
+
+                                                Keep the module "name" field identifier UNCHANGED (e.g. "style", "pose").
                                                 Keep the same structure: name, displayName, locked, tags.
                                                 Generate new UUIDs for modified tags.
                                                 Return ONLY valid JSON.
+                                                Ensure all module displayNames and tag text values are in English.
                                                 """,
                                 instruction, modulesJson);
 
