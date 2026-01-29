@@ -48,6 +48,7 @@ const CodexGrimoire: FC = () => {
         setRawPrompt,
         isImg2Img,
         setIsImg2Img,
+        addRefinementHistory,
     } = useVoidWeaverStore()
 
     /**
@@ -57,11 +58,11 @@ const CodexGrimoire: FC = () => {
     const handleDecipher = async () => {
         // 验证必需数据
         if (!sourceImage) {
-            showToast({ type: 'warning', message: '请先上传图片！' })
+            showToast({ type: 'warning', message: 'Please upload an image first!' })
             return
         }
         if (!geminiApiKey) {
-            showToast({ type: 'warning', message: '请先输入 Gemini API Key！' })
+            showToast({ type: 'warning', message: 'Please enter Gemini API Key first!' })
             return
         }
 
@@ -80,7 +81,7 @@ const CodexGrimoire: FC = () => {
             setRawPrompt(response.rawPrompt)
 
             console.log('分析完成！', response)
-            showToast({ type: 'success', message: '图片分析成功！' })
+            showToast({ type: 'success', message: 'Image analysis completed successfully!' })
         } catch (error) {
             console.error('分析失败:', error)
             showToast({
@@ -99,26 +100,26 @@ const CodexGrimoire: FC = () => {
     const handleManifest = async () => {
         // 验证必需数据
         if (modules.length === 0 || modules.every(m => m.tags.length === 0)) {
-            showToast({ type: 'warning', message: '请先分析图片或添加标签！' })
+            showToast({ type: 'warning', message: 'Please analyze image or add tags first!' })
             return
         }
 
         // 验证 API Key
         if (engine === 'novelai' && !novelaiApiKey) {
-            showToast({ type: 'warning', message: '请先输入 NovelAI API Key！' })
+            showToast({ type: 'warning', message: 'Please enter NovelAI API Key first!' })
             return
         }
 
         // Img2Img 模式检查
         if (isImg2Img && !sourceImage) {
-            showToast({ type: 'warning', message: 'Img2Img 模式需要先上传图片！' })
+            showToast({ type: 'warning', message: 'Img2Img mode requires a source image!' })
             return
         }
 
         // 如果是 Google 引擎，优先使用 googleCredentials，如果没有则尝试使用 geminiApiKey
         const activeGoogleKey = googleCredentials || geminiApiKey
         if (engine === 'google-imagen' && !activeGoogleKey) {
-            showToast({ type: 'warning', message: '请先输入 Gemini API Key 或 Google 凭证！' })
+            showToast({ type: 'warning', message: 'Please enter Gemini API Key or Google credentials!' })
             return
         }
 
@@ -151,7 +152,7 @@ const CodexGrimoire: FC = () => {
             setCurrentView('generated')
 
             console.log('生成完成！')
-            showToast({ type: 'success', message: '图片生成成功！' })
+            showToast({ type: 'success', message: 'Image generated successfully!' })
         } catch (error) {
             console.error('生成失败:', error)
             showToast({
@@ -168,7 +169,7 @@ const CodexGrimoire: FC = () => {
      */
     const handleCopy = async () => {
         if (modules.length === 0 || modules.every(m => m.tags.length === 0)) {
-            showToast({ type: 'warning', message: '没有可复制的提示词！' })
+            showToast({ type: 'warning', message: 'No prompt to copy!' })
             return
         }
 
@@ -190,11 +191,11 @@ const CodexGrimoire: FC = () => {
     const handleRefine = async (instruction: string) => {
         // 验证必需数据
         if (!geminiApiKey) {
-            showToast({ type: 'warning', message: '请先输入 Gemini API Key！' })
+            showToast({ type: 'warning', message: 'Please enter Gemini API Key first!' })
             return
         }
         if (modules.length === 0) {
-            showToast({ type: 'warning', message: '请先分析图片！' })
+            showToast({ type: 'warning', message: 'Please analyze image first!' })
             return
         }
 
@@ -237,8 +238,11 @@ const CodexGrimoire: FC = () => {
             console.log('更新后的模块:', updatedModules)
             setModules(updatedModules)
 
+            // 保存精炼指令到历史记录
+            addRefinementHistory(instruction)
+
             console.log('精炼完成！', response)
-            showToast({ type: 'success', message: '模块精炼成功！' })
+            showToast({ type: 'success', message: 'Modules refined successfully!' })
         } catch (error) {
             console.error('精炼失败:', error)
             showToast({

@@ -1,7 +1,6 @@
 package com.codex.voidweaver.exception;
 
-import lombok.Builder;
-import lombok.Data;
+import com.codex.voidweaver.model.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,15 +16,6 @@ import java.time.Instant;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @Data
-    @Builder
-    public static class ErrorResponse {
-        private boolean error;
-        private String message;
-        private String code;
-        private String timestamp;
-    }
-
     /**
      * Handle Custom ApiException
      */
@@ -40,14 +30,15 @@ public class GlobalExceptionHandler {
                 .timestamp(Instant.now().toString())
                 .build();
 
-        // Map codes to HTTP status if needed
+        // Map codes to HTTP status
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-        if ("INVALID_API_KEY".equals(e.getCode()))
+        if ("INVALID_API_KEY".equals(e.getCode())) {
             status = HttpStatus.UNAUTHORIZED;
-        if ("INVALID_REQUEST".equals(e.getCode()))
+        } else if ("INVALID_REQUEST".equals(e.getCode())) {
             status = HttpStatus.BAD_REQUEST;
-        if ("RATE_LIMITED".equals(e.getCode()))
+        } else if ("RATE_LIMITED".equals(e.getCode())) {
             status = HttpStatus.TOO_MANY_REQUESTS;
+        }
 
         return new ResponseEntity<>(response, status);
     }

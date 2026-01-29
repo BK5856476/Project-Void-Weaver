@@ -10,7 +10,7 @@
 
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { VoidWeaverState, ModuleDto, ModuleType } from '@/types'
+import type { VoidWeaverState, ModuleDto, ModuleType, EngineType } from '@/types'
 
 /**
  * 模块显示名称映射表
@@ -90,47 +90,51 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
             currentView: 'source',      // 当前视图：source（源图片）或 generated（生成图片）
             sidebarOpen: true,          // 侧边栏是否打开
 
+            // ========== Refinement History ==========
+            refinementHistory: [],      // 精炼历史（最多2条）
+            showRefinementHistory: true, // 是否显示历史记录
+
             // ========== Actions（状态更新方法） ==========
 
             /**
              * 设置 Gemini API Key
              */
-            setGeminiApiKey: (key) => set({ geminiApiKey: key }),
+            setGeminiApiKey: (key: string) => set({ geminiApiKey: key }),
 
             /**
              * 设置 NovelAI API Key
              */
-            setNovelaiApiKey: (key) => set({ novelaiApiKey: key }),
+            setNovelaiApiKey: (key: string) => set({ novelaiApiKey: key }),
 
             /**
              * 设置 Google Vertex AI 凭证
              */
-            setGoogleCredentials: (creds) => set({ googleCredentials: creds }),
+            setGoogleCredentials: (creds: string) => set({ googleCredentials: creds }),
 
             /**
              * 设置生成引擎（novelai 或 google-imagen）
              */
-            setEngine: (engine) => set({ engine }),
+            setEngine: (engine: EngineType) => set({ engine }),
 
             /**
              * 设置分辨率（如 "832x1216"）
              */
-            setResolution: (resolution) => set({ resolution }),
+            setResolution: (resolution: string) => set({ resolution }),
 
             /**
              * 设置采样步数（1-50）
              */
-            setSteps: (steps) => set({ steps }),
+            setSteps: (steps: number) => set({ steps }),
 
             /**
              * 设置相关性/CFG Scale
              */
-            setScale: (scale) => set({ scale }),
+            setScale: (scale: number) => set({ scale }),
 
             /**
              * 设置源图片（Base64 字符串）
              */
-            setSourceImage: (image) => set({ sourceImage: image }),
+            setSourceImage: (image: string | null) => set({ sourceImage: image }),
 
             /**
              * 添加新生成的图片到历史记录
@@ -144,14 +148,34 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
                 set((state) => {
                     const newHistory = [...state.generatedHistory, image]
 
-                    // 保持最多2张
-                    if (newHistory.length > 2) {
+                    // 保持最多3张
+                    if (newHistory.length > 3) {
                         newHistory.shift() // 删除第一张（最旧）
                     }
 
                     return {
                         generatedHistory: newHistory,
                         currentHistoryIndex: newHistory.length - 1 // 指向最新
+                    }
+                }),
+
+            /**
+             * 移除指定索引的生成图片
+             */
+            removeGeneratedImage: (index: number) =>
+                set((state) => {
+                    const newHistory = state.generatedHistory.filter((_, i) => i !== index)
+                    // 调整索引，确保不越界
+                    let newIndex = state.currentHistoryIndex
+                    if (newIndex >= newHistory.length) {
+                        newIndex = newHistory.length - 1
+                    }
+                    if (newHistory.length === 0) {
+                        newIndex = -1
+                    }
+                    return {
+                        generatedHistory: newHistory,
+                        currentHistoryIndex: newIndex
                     }
                 }),
 
@@ -254,6 +278,7 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
              */
             setIsGenerating: (value) => set({ isGenerating: value }),
 
+
             /**
              * 设置是否正在精炼模块
              */
@@ -263,6 +288,26 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
              * 设置是否启用图生图模式
              */
             setIsImg2Img: (value) => set({ isImg2Img: value }),
+
+            /**
+             * 添加精炼指令到历史记录
+             * 最多保存2条，超过则删除最旧的
+             */
+            addRefinementHistory: (instruction: string) => set((state) => {
+                const newHistory = [...state.refinementHistory, instruction]
+                // 保持最多2条记录
+                if (newHistory.length > 2) {
+                    newHistory.shift() // 删除最旧的（第一条）
+                }
+                return { refinementHistory: newHistory }
+            }),
+
+            /**
+             * 切换精炼历史的显示状态
+             */
+            toggleRefinementHistory: () => set((state) => ({
+                showRefinementHistory: !state.showRefinementHistory
+            })),
         }),
         { name: 'VoidWeaverStore' } // Redux DevTools 中显示的名称
     )

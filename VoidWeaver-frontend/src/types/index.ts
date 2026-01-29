@@ -133,8 +133,8 @@ export interface VoidWeaverState {
 
     // Image Data
     sourceImage: string | null
-    generatedHistory: string[] // Store last 2 images
-    currentHistoryIndex: number // 0 or 1
+    generatedHistory: string[] // Store last 3 images
+    currentHistoryIndex: number // 0, 1, or 2
 
     // Module Data
     modules: ModuleDto[]
@@ -148,6 +148,10 @@ export interface VoidWeaverState {
     currentView: 'source' | 'generated'
     sidebarOpen: boolean
 
+    // Refinement History
+    refinementHistory: string[] // Last 2 refinement instructions
+    showRefinementHistory: boolean // Toggle history visibility
+
     // Actions
     setGeminiApiKey: (key: string) => void
     setNovelaiApiKey: (key: string) => void
@@ -160,9 +164,12 @@ export interface VoidWeaverState {
 
     /** 
      * Add new generated image to history
-     * Maintain max 2 images, delete oldest if > 2
+     * Maintain max 3 images, delete oldest if > 3
      */
     addGeneratedImage: (image: string) => void
+
+    /** Remove generated image at specific index */
+    removeGeneratedImage: (index: number) => void
 
     /** Switch to previous/next image index */
     setHistoryIndex: (index: number) => void
@@ -179,4 +186,10 @@ export interface VoidWeaverState {
     setIsGenerating: (value: boolean) => void
     setIsRefining: (value: boolean) => void
     setIsImg2Img: (value: boolean) => void
+
+    /** Add refinement instruction to history (max 2) */
+    addRefinementHistory: (instruction: string) => void
+
+    /** Toggle refinement history visibility */
+    toggleRefinementHistory: () => void
 }

@@ -14,7 +14,7 @@
  */
 
 import { FC, useState } from 'react'
-import { Maximize2, Download, ChevronLeft, ChevronRight, ArrowLeftFromLine } from 'lucide-react'
+import { Maximize2, Download, ChevronLeft, ChevronRight, ArrowLeftFromLine, Trash2 } from 'lucide-react'
 import ViewToggle from './ViewToggle'
 import ImageUploadZone from './ImageUploadZone'
 import MatrixRain from '../ui/MatrixRain'
@@ -35,7 +35,9 @@ const VisualCortex: FC = () => {
         isAnalyzing,
         isGenerating,
         setSourceImage,
+        isImg2Img,
         setIsImg2Img,
+        removeGeneratedImage,
         setCurrentView
     } = useVoidWeaverStore()
 
@@ -56,14 +58,14 @@ const VisualCortex: FC = () => {
             setIsSourceGlowing(true)
             setTimeout(() => setIsSourceGlowing(false), 1000)
 
-            showToast({ type: 'success', message: '已设为底图！(Img2Img Mode Enabled)' })
+            showToast({ type: 'success', message: 'Set as input image! (Img2Img Mode Enabled)' })
         }
     }
 
     // 处理下载图片
     const handleDownload = () => {
         if (!currentGeneratedImage) {
-            showToast({ type: 'warning', message: '没有可下载的图片！' })
+            showToast({ type: 'warning', message: 'No image to download!' })
             return
         }
 
@@ -73,10 +75,10 @@ const VisualCortex: FC = () => {
             const filename = `void-weaver-${timestamp}.png`
 
             downloadImage(currentGeneratedImage, filename)
-            showToast({ type: 'success', message: '图片下载成功！' })
+            showToast({ type: 'success', message: 'Image downloaded successfully!' })
         } catch (error) {
             console.error('下载失败:', error)
-            showToast({ type: 'error', message: '图片下载失败！' })
+            showToast({ type: 'error', message: 'Image download failed!' })
         }
     }
 
@@ -92,6 +94,15 @@ const VisualCortex: FC = () => {
         e.stopPropagation()
         if (currentHistoryIndex < generatedHistory.length - 1) {
             setHistoryIndex(currentHistoryIndex + 1)
+        }
+    }
+
+    // 处理移除图片
+    const handleRemoveImage = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (currentHistoryIndex !== -1) {
+            removeGeneratedImage(currentHistoryIndex)
+            showToast({ type: 'success', message: 'Image removed successfully!' })
         }
     }
 
@@ -137,6 +148,17 @@ const VisualCortex: FC = () => {
                         </div>
                     )}
 
+                    {/* 移除按钮 */}
+                    {currentView === 'generated' && currentGeneratedImage && (
+                        <button
+                            onClick={handleRemoveImage}
+                            className="p-2 rounded-md hover:bg-red-900/40 transition-colors group"
+                            title="移除图片 (Remove)"
+                        >
+                            <Trash2 className="w-4 h-4 text-zinc-400 group-hover:text-red-400" />
+                        </button>
+                    )}
+
                     {/* 设为底图按钮 */}
                     {currentView === 'generated' && currentGeneratedImage && (
                         <button
@@ -166,8 +188,8 @@ const VisualCortex: FC = () => {
 
             {/* 内容区域：根据当前视图显示不同内容 */}
             {currentView === 'source' ? (
-                // 源图片视图：显示上传区 (传递发光状态)
-                <ImageUploadZone isGlowing={isSourceGlowing} />
+                // 源图片视图：显示上传区 (传递发光状态: 强制开启图生图模式时常驻发光，或者点击设为底图时触发瞬间发光)
+                <ImageUploadZone isGlowing={isImg2Img || isSourceGlowing} />
             ) : (
                 // 生成图片视图
                 <div className="flex-1 flex items-center justify-center p-8 relative group/view">
