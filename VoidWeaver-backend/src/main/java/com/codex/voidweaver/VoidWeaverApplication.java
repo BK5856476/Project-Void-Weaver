@@ -12,13 +12,8 @@ public class VoidWeaverApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(VoidWeaverApplication.class, args);
-        System.out.println("""
-            
-            ╔══════════════════════════════════════════╗
-            ║     VOID WEAVER BACKEND INITIALIZED      ║
-            ║    Rewrite the World Protocol Active     ║
-            ╚══════════════════════════════════════════╝
-            
-            """);
+        System.out.println("VoidWeaver Backend Started.");
+        System.out.println("Version: 1.0.0");
+        System.out.println("Engine: Online");
     }
 }

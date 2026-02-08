@@ -23,7 +23,18 @@ import ApiKeyInput from './ApiKeyInput' // 引入 API Key 输入组件
 
 const Sidebar: FC = () => {
     // 从全局状态中获取引擎、分辨率、步数等设置
-    const { engine, setEngine, resolution, setResolution, steps, setSteps, sidebarOpen, toggleSidebar } = useVoidWeaverStore()
+    const {
+        engine,
+        setEngine,
+        resolution,
+        setResolution,
+        steps,
+        setSteps,
+        sidebarOpen,
+        toggleSidebar,
+        deepThinkingEnabled,
+        toggleDeepThinking,
+    } = useVoidWeaverStore()
 
     return (
         <aside
@@ -92,6 +103,30 @@ const Sidebar: FC = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Deep Thinking Toggle (Only for Gemini) */}
+                {engine === 'google-imagen' && (
+                    <div className="mb-4 relative group/tooltip">
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider group-hover:text-zinc-300 transition-colors flex items-center gap-2">
+                                Deep Thinking
+                                <span className="text-[10px] bg-cyan-900/30 text-cyan-400 px-1 rounded">BETA</span>
+                            </span>
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    checked={deepThinkingEnabled}
+                                    onChange={toggleDeepThinking}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-zinc-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-900 peer-checked:after:bg-cyan-400 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-900/50"></div>
+                            </div>
+                        </label>
+                        <p className="text-[10px] text-zinc-600 mt-1 leading-tight">
+                            Enables iterative visual refinement chain: Flash Sketch -&gt; Vision Critique -&gt; Danbooru Style Injection -&gt; Final Gen.
+                        </p>
+                    </div>
+                )}
 
                 {/* 分辨率选择器 */}
                 <div>

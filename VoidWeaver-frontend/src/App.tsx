@@ -11,8 +11,12 @@ import { FC } from 'react'
 import Sidebar from './components/layout/Sidebar'
 import MainWorkspace from './components/layout/MainWorkspace'
 import Toast from './components/ui/Toast'
+import DeepThinkingModal from './components/visual/DeepThinkingModal'
+import { useVoidWeaverStore } from './store/useVoidWeaverStore'
 
 const App: FC = () => {
+    const { isDeepThinkingModalOpen, toggleDeepThinkingModal } = useVoidWeaverStore()
+
     return (
         // 全局容器：深色背景 + 全屏布局 + 横向 flex
         <div className="bg-zinc-950 text-zinc-200 h-screen w-screen overflow-hidden flex text-sm font-sans selection:bg-cyan-500/30 selection:text-cyan-100">
@@ -24,6 +28,12 @@ const App: FC = () => {
 
             {/* Toast 通知组件 */}
             <Toast />
+
+            {/* Deep Thinking Process Modal */}
+            <DeepThinkingModal
+                isOpen={isDeepThinkingModalOpen}
+                onClose={toggleDeepThinkingModal}
+            />
         </div>
     )
 }

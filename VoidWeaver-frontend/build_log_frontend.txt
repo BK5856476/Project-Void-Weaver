@@ -1,0 +1,5 @@
+﻿
+> voidweaver-frontend@0.0.0 build
+> tsc && vite build
+
+src/lib/utils.ts(109,54): error TS6133: 'engine' is declared but its value is never read.

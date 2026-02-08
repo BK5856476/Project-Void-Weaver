@@ -14,7 +14,7 @@
  */
 
 import { FC, useState } from 'react'
-import { Maximize2, Download, ChevronLeft, ChevronRight, ArrowLeftFromLine, Trash2 } from 'lucide-react'
+import { Maximize2, Download, ChevronLeft, ChevronRight, ArrowLeftFromLine, Trash2, Brain } from 'lucide-react'
 import ViewToggle from './ViewToggle'
 import ImageUploadZone from './ImageUploadZone'
 import MatrixRain from '../ui/MatrixRain'
@@ -38,7 +38,10 @@ const VisualCortex: FC = () => {
         isImg2Img,
         setIsImg2Img,
         removeGeneratedImage,
-        setCurrentView
+        setCurrentView,
+        toggleDeepThinkingModal,
+        setThinkingLog,
+        setSketchImage
     } = useVoidWeaverStore()
 
     // ... (currentGeneratedImage logic) ...
@@ -50,7 +53,7 @@ const VisualCortex: FC = () => {
     // 设为底图处理
     const handleSetAsInput = () => {
         if (currentGeneratedImage) {
-            setSourceImage(currentGeneratedImage)
+            setSourceImage(currentGeneratedImage.imageData)
             setIsImg2Img(true) // 自动开启图生图模式
             setCurrentView('source') // 切换回源图片视图
 
@@ -74,7 +77,7 @@ const VisualCortex: FC = () => {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
             const filename = `void-weaver-${timestamp}.png`
 
-            downloadImage(currentGeneratedImage, filename)
+            downloadImage(currentGeneratedImage.imageData, filename)
             showToast({ type: 'success', message: 'Image downloaded successfully!' })
         } catch (error) {
             console.error('下载失败:', error)
@@ -82,27 +85,25 @@ const VisualCortex: FC = () => {
         }
     }
 
-    // 切换图片处理
-    const handlePrevImage = (e: React.MouseEvent) => {
-        e.stopPropagation()
+    // 处理移除图片
+    const handleRemoveImage = () => {
+        if (currentGeneratedImage) {
+            removeGeneratedImage(currentHistoryIndex)
+            showToast({ type: 'info', message: 'Generated image removed.' })
+        }
+    }
+
+    // 处理上一张图片
+    const handlePrevImage = () => {
         if (currentHistoryIndex > 0) {
             setHistoryIndex(currentHistoryIndex - 1)
         }
     }
 
-    const handleNextImage = (e: React.MouseEvent) => {
-        e.stopPropagation()
+    // 处理下一张图片
+    const handleNextImage = () => {
         if (currentHistoryIndex < generatedHistory.length - 1) {
             setHistoryIndex(currentHistoryIndex + 1)
-        }
-    }
-
-    // 处理移除图片
-    const handleRemoveImage = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        if (currentHistoryIndex !== -1) {
-            removeGeneratedImage(currentHistoryIndex)
-            showToast({ type: 'success', message: 'Image removed successfully!' })
         }
     }
 
@@ -146,6 +147,23 @@ const VisualCortex: FC = () => {
                                 />
                             ))}
                         </div>
+                    )}
+
+                    {/* 查看思考过程按钮 */}
+                    {currentView === 'generated' && currentGeneratedImage?.thinkingLog && (
+                        <button
+                            onClick={() => {
+                                if (currentGeneratedImage.thinkingLog) {
+                                    setThinkingLog(currentGeneratedImage.thinkingLog)
+                                    setSketchImage(currentGeneratedImage.sketchImage || null)
+                                    toggleDeepThinkingModal()
+                                }
+                            }}
+                            className="p-2 rounded-md hover:bg-zinc-800 transition-colors group"
+                            title="查看思考过程 (View Thinking Process)"
+                        >
+                            <Brain className="w-4 h-4 text-purple-500 group-hover:text-purple-400 animate-pulse" />
+                        </button>
                     )}
 
                     {/* 移除按钮 */}
@@ -197,7 +215,7 @@ const VisualCortex: FC = () => {
                         // 如果有生成的图片，显示预览
                         <div className="relative w-full h-full max-h-[600px] rounded-lg overflow-hidden border border-zinc-800 shadow-2xl bg-black/40 flex items-center justify-center">
                             <img
-                                src={`data:image/png;base64,${currentGeneratedImage}`}
+                                src={`data:image/png;base64,${currentGeneratedImage.imageData}`}
                                 alt="Generated"
                                 className="max-w-full max-h-full object-contain" // 保持宽高比
                             />
@@ -237,5 +255,4 @@ const VisualCortex: FC = () => {
         </div>
     )
 }
-
 export default VisualCortex

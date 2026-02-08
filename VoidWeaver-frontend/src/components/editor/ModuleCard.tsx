@@ -44,6 +44,7 @@ const ModuleCard: FC<ModuleCardProps> = ({
     // 同步 store tags 到显示文本
     useEffect(() => {
         const formatted = module.tags
+            .filter(tag => !tag.hidden) // 过滤掉隐藏标签
             .map(tag => {
                 if (Math.abs(tag.weight - 1.0) > 0.01) {
                     return `${tag.weight.toFixed(1)}::${tag.text}::`

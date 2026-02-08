@@ -144,9 +144,33 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
              * - 如果超过2张，删除最旧的（第一张）
              * - 自动将当前索引指向最新图片
              */
+            /**
+             * 添加新生成的图片到历史记录
+             * 
+             * 逻辑：
+             * - 将新图片添加到数组末尾
+             * - 如果超过2张，删除最旧的（第一张）
+             * - 自动将当前索引指向最新图片
+             */
             addGeneratedImage: (image) =>
                 set((state) => {
-                    const newHistory = [...state.generatedHistory, image]
+                    // Check if input is string (legacy) or object
+                    let newImageEntry: GeneratedImage;
+
+                    if (typeof image === 'string') {
+                        newImageEntry = { imageData: image, timestamp: Date.now() };
+                    } else {
+                        // Explicitly construct object to avoid TS spread error on union type
+                        newImageEntry = {
+                            imageData: image.imageData,
+                            timestamp: Date.now(),
+                            thinkingLog: image.thinkingLog,
+                            sketchImage: image.sketchImage,
+                            prompt: image.prompt
+                        };
+                    }
+
+                    const newHistory = [...state.generatedHistory, newImageEntry]
 
                     // 保持最多3张
                     if (newHistory.length > 3) {
@@ -308,6 +332,17 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
             toggleRefinementHistory: () => set((state) => ({
                 showRefinementHistory: !state.showRefinementHistory
             })),
+
+            // ========== Deep Thinking State ==========
+            deepThinkingEnabled: false,
+            thinkingLog: [],
+            sketchImage: null,
+            isDeepThinkingModalOpen: false,
+
+            toggleDeepThinking: () => set((state) => ({ deepThinkingEnabled: !state.deepThinkingEnabled })),
+            toggleDeepThinkingModal: () => set((state) => ({ isDeepThinkingModalOpen: !state.isDeepThinkingModalOpen })),
+            setThinkingLog: (log: string[]) => set({ thinkingLog: log }),
+            setSketchImage: (image: string | null) => set({ sketchImage: image }),
         }),
         { name: 'VoidWeaverStore' } // Redux DevTools 中显示的名称
     )

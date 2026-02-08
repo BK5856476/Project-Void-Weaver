@@ -10,6 +10,8 @@ export interface TagDto {
     weight: number
     /** 唯一标识符 */
     id: string
+    /** 是否隐藏 (不显示在前端，但参与生成) */
+    hidden?: boolean
 }
 
 /**
@@ -86,6 +88,8 @@ export interface GenerateRequest {
     image?: string
     /** Img2Img 重绘幅度 (0.0 - 0.99) */
     strength?: number
+    /** 是否开启深度思考模式 */
+    deepThinking?: boolean
 }
 
 /**
@@ -94,6 +98,10 @@ export interface GenerateRequest {
 export interface GenerateResponse {
     /** Base64编码的生成图片 */
     imageData: string
+    /** 深度思考：草图 (Base64) */
+    sketchImage?: string
+    /** 深度思考：思考过程日志 */
+    thinkingLog?: string[]
 }
 
 /**
@@ -117,6 +125,22 @@ export interface RefineResponse {
 }
 
 /**
+ * 生成的历史图片对象
+ */
+export interface GeneratedImage {
+    /** Base64编码的图片数据 */
+    imageData: string
+    /** 深度思考日志 */
+    thinkingLog?: string[]
+    /** 深度思考草图 */
+    sketchImage?: string
+    /** 生成时使用的 Prompt */
+    prompt?: string
+    /** 生成时间戳 */
+    timestamp?: number
+}
+
+/**
  * Zustand 全局状态
  */
 export interface VoidWeaverState {
@@ -133,7 +157,7 @@ export interface VoidWeaverState {
 
     // Image Data
     sourceImage: string | null
-    generatedHistory: string[] // Store last 3 images
+    generatedHistory: GeneratedImage[] // Store last 3 images
     currentHistoryIndex: number // 0, 1, or 2
 
     // Module Data
@@ -166,7 +190,7 @@ export interface VoidWeaverState {
      * Add new generated image to history
      * Maintain max 3 images, delete oldest if > 3
      */
-    addGeneratedImage: (image: string) => void
+    addGeneratedImage: (image: string | GeneratedImage) => void
 
     /** Remove generated image at specific index */
     removeGeneratedImage: (index: number) => void
@@ -192,4 +216,14 @@ export interface VoidWeaverState {
 
     /** Toggle refinement history visibility */
     toggleRefinementHistory: () => void
+
+    // Deep Thinking
+    deepThinkingEnabled: boolean
+    thinkingLog: string[]
+    sketchImage: string | null
+    isDeepThinkingModalOpen: boolean
+    toggleDeepThinking: () => void
+    toggleDeepThinkingModal: () => void
+    setThinkingLog: (log: string[]) => void
+    setSketchImage: (image: string | null) => void
 }

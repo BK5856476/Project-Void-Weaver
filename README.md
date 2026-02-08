@@ -1,42 +1,45 @@
-# Void Weaver - AI 图像分析与生成工具
+# Void Weaver - AI Image Analysis & Generation Tool
 
 > **Rewrite the World Protocol Active** 🌌
 
-Void Weaver 是一个强大的 AI 驱动的图像分析与生成工具，能够解析图片内容并生成高质量的 AI 图像。
+Void Weaver is a powerful AI-driven image analysis and generation tool that deciphers image content and manifests high-quality AI art. It serves as a bridge between visual inspiration and digital creation.
 
-## ✨ 核心功能
+## ✨ Core Features
 
-- 🔍 **智能图像分析**：使用 Google Gemini 深度分析图片，提取 8 个维度的标签
-- 🎨 **双引擎生成**：支持 NovelAI V3（二次元风格）和 Google Imagen（写实风格）
-- 🏷️ **模块化标签系统**：8 个可编辑模块，精确控制生成效果
-- ⚖️ **权重控制**：支持标签权重调整（0.5-1.5）
-- 🔒 **锁定机制**：保护重要标签不被 AI 修改
-- 💬 **自然语言精炼**：用简单的文字描述调整标签，支持**历史记录记录**与**隐藏**
-- ⏳ **增强型加载反馈**：旋转图标与输入框内动态 Loading 点，实时掌握进度
-- 🌐 **全英文界面**：优化后的国际化 UI，所有提示与交互均采用标准英文
-- 💾 **智能下载**：点击下载自动生成带时间戳的唯一文件名，方便整理
-- 🎯 **实时预览**：即时查看源图片和生成结果
+- **🧠 Deep Thinking Mode (New!)**: A multi-step "Slow Thinking" process for high-fidelity generation.
+  - **Sketch Generation**: Creates an initial structural blueprint.
+  - **Self-Critique**: Analyzes the sketch for anatomical and structural flaws.
+  - **Imperative Correction**: Issues specific "Fix Commands" to the final generation model.
+  - **Style Injection**: Automatically applies professional art styles (matte, impasto, textured) while rejecting "plastic" CGI looks.
+- **🎨 Dual Engine Support**: Seamlessly switch between **NovelAI V3** (Anime/2D) and **Google Imagen** (Photorealistic/Creative).
+- **hidden Implicit Color Extraction**: Automatically extracts 5-7 dominant color palettes from source images as hidden tags, ensuring color consistency without cluttering the UI.
+- **🔍 Intelligent Octant Analysis**: Uses Google Gemini 2.0 Flash to deconstruct images into 8 key modules (Style, Subject, Pose, Costume, Background, Composition, Atmosphere, Extra).
+- **⚖️ Precise Weight Control**: Fine-tune generation with adjustable tag weights (0.5 - 1.5).
+- **🔒 Module Locking**: Lock specific modules (e.g., keep the "Pose" but change the "Costume") for iterative refinement.
+- **💬 Natural Language Refinement**: Update your prompt using simple English instructions (e.g., "Make the hair pink", "Add cat ears").
+- **💻 Cyberpunk UI**: A fully immersive, matrix-inspired interface with real-time streaming logs, holographic effects, and dynamic feedback.
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 前置要求
+### Prerequisites
 
-- **Java 18+**
-- **Node.js 18+**
+- **Java 18+** (for Backend)
+- **Node.js 18+** (for Frontend)
 - **Maven 3.8+**
-- **Gemini API Key**（必需）
-- **NovelAI API Key**（可选，用于二次元风格生成）
+- **Gemini API Key** (Required for analysis & critique)
+- **NovelAI API Token** (Optional, for Anime generation)
+- **Google Cloud Credentials** (Optional, for Imagen generation)
 
-### 安装步骤
+### Installation
 
-#### 1. 克隆项目
+#### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd "Project Void Weaver"
 ```
 
-#### 2. 启动后端
+#### 2. Start Backend
 
 ```bash
 cd VoidWeaver-backend
@@ -44,294 +47,76 @@ mvn package -DskipTests
 java -jar target/voidweaver-1.0.0.jar
 ```
 
-等待看到启动成功提示：
+Wait for the initialization signal:
 ```
 ╔══════════════════════════════════════════╗
 ║     VOID WEAVER BACKEND INITIALIZED      ║
 ║    Rewrite the World Protocol Active     ║
 ╚══════════════════════════════════════════╝
 ```
+Server runs at: `http://localhost:8080`
 
-后端运行在：`http://localhost:8080`
-
-#### 3. 启动前端
+#### 3. Start Frontend
 
 ```bash
 cd VoidWeaver-frontend
 npm install
 npm run dev
 ```
+Access UI at: `http://localhost:5173`
 
-访问：`http://localhost:5173`
+## 📖 User Guide
 
-## 📖 使用指南
+### Step 1: Configuration
 
-### 第一步：配置 API Keys
+1. Open the **Settings Sidebar** (left).
+2. Enter your **Gemini API Key** (Essential).
+3. Select your **Engine**: `NovelAI` or `Google Imagen`.
+4. Enter corresponding credentials (NovelAI Token or Google Cloud JSON).
+5. (Optional) Enable **Deep Thinking** toggle for enhanced quality.
+6. Click **Save**.
 
-#### 获取 Gemini API Key（必需）
-1. 访问 [Google AI Studio](https://aistudio.google.com/apikey)
-2. 点击 "Create API Key"
-3. 复制生成的 API Key（格式：`AIza...`）
+### Step 2: Decipher (Analysis)
 
-#### 获取 NovelAI API Key（可选）
-1. 登录 [NovelAI](https://novelai.net/)
-2. 进入账户设置 → API
-3. 复制你的 Persistent API Token
+1. **Upload**: Drag & Drop an image into the "Source Material" zone.
+2. **Click DECIPHER**: Gemini will break down the image into 8 editable modules.
+3. **Review**: Check the extracted tags in the right-hand panel.
 
-#### 在应用中配置
-1. 打开左侧侧边栏
-2. 在 "Gemini API Key *" 输入框中粘贴 Gemini Key
-3. 选择生成引擎（NovelAI 或 Imagen）
-4. 如果选择 NovelAI，输入 NovelAI API Key
-5. 点击右上角 **Save** 按钮保存
+### Step 3: Refine & Edit
 
-### 第二步：分析图片
+- **Edit Tags**: Add or remove tags in any module.
+- **Adjust Weights**: Click a tag to tune its influence.
+- **Lock Modules**: Click the 🔓 icon to lock a module (preventing changes).
+- **Natural Language Refinement**: Type instructions like "Change background to a snowy forest" in the bottom input bar and click **Send**.
 
-1. **上传图片**
-   - 点击左侧 "Source Material" 区域
-   - 选择一张图片（PNG/JPG）
-   - 图片会显示在左侧面板
+### Step 4: Manifest (Generation)
 
-2. **点击 DECIPHER**（右上角工具栏）
-   - 系统调用 Gemini 分析图片
-   - 等待 10-30 秒
-   - 右侧显示 8 个模块的标签
+1. **Click MANIFEST**: The system will synthesize the final image.
+2. **Deep Thinking Flow** (if enabled):
+   - 1. **Sketch**: Generates a rough layout.
+   - 2. **Critique**: "I see a distorted hand... Fix it."
+   - 3. **Refine**: Final generation using the sketch + critique + style injection.
+3. **View Result**: The generated image appears in the main viewport.
+4. **Brain Icon**: Click the 🧠 icon on a result to replay its "Thinking Process" logs.
 
-### 第三步：编辑标签（可选）
+## 🛠️ Tech Stack
 
-**8 个模块说明：**
+### Backend
+- **Java 18** / **Spring Boot 3.2.1**
+- **Google Vertex AI SDK**
+- **OkHttp** (NovelAI Integration)
+- **Lombok** / **Jackson**
 
-| 模块 | 说明 | 示例 |
-|------|------|------|
-| **Style** | 画风 | anime style, digital art, watercolor |
-| **Subject** | 主体 | 1girl, blue hair, red eyes |
-| **Pose** | 姿势 | sitting, standing, running |
-| **Costume** | 服装 | school uniform, dress, armor |
-| **Background** | 背景 | city, forest, beach, simple background |
-| **Composition** | 构图 | close-up, full body, medium shot |
-| **Atmosphere** | 氛围 | warm lighting, dark mood, sunset |
-| **Extra** | 额外描述 | detailed, high quality, masterpiece |
+### Frontend
+- **React 18** / **TypeScript**
+- **Vite**
+- **Zustand** (State Management)
+- **TailwindCSS** (Styling)
+- **Framer Motion** (Animations)
 
-**编辑操作：**
-- ➕ **添加标签**：点击模块右上角的 `+` 按钮
-- ❌ **删除标签**：点击标签右侧的 `×`
-- ⚖️ **调整权重**：点击标签编辑权重值（0.5-1.5）
-  - `1.0` = 正常强度
-  - `1.2-1.5` = 强调
-  - `0.7-0.9` = 弱化
-- 🔒 **锁定模块**：点击模块右上角的锁图标
-
-### 第四步：生成图片
-
-1. **配置参数**（侧边栏）
-   - **Resolution**：
-     - Portrait (832x1216) - 竖屏
-     - Landscape (1216x832) - 横屏
-     - Square (1024x1024) - 正方形
-   - **Sampling Steps**：1-50（推荐 28-35）
-
-2. **点击 MANIFEST**（右上角工具栏）
-   - 等待生成（10-60 秒）
-   - 自动切换到 "New World" 视图
-   - 查看生成结果
-
-### 第五步：精炼与历史 (Refinement & History)
-
-1. **查阅历史记录**：
-   - 输入框上方会显示最近 2 条精炼指令。
-   - 历史记录以 60% 透明度显示，点击右侧 `×` 可隐藏。
-
-2. **输入精炼指令**：
-   - 在底部输入框输入自然语言指令（英文界面）。
-   - 示例："Make the hair pink", "Add cat ears", "Night time scene".
-
-3. **点击 SEND 按钮**：
-   - **动态反馈**：
-     - 左侧 Sparkles 图标开始**旋转动画**。
-     - 输入框内显示紫色**动态跳动加载点** (Loading...)。
-   - Gemini 根据指令更新未锁定的模块。
-
-4. **再次点击 MANIFEST** 重新生成。
-
-## 🎯 快捷操作流程
-
-### 最快生成流程
-```
-上传图片 → DECIPHER → MANIFEST → 完成
-```
-
-### 高级定制流程
-```
-上传图片 → DECIPHER → 编辑标签 → 调整权重 → 锁定模块 → MANIFEST → Refine → MANIFEST
-```
-
-## 🛠️ 技术栈
-
-### 后端
-- **Java 18** + **Spring Boot 3.2.1**
-- **OkHttp** - HTTP 客户端
-- **Jackson** - JSON 处理
-- **Lombok** - 代码简化
-
-### 前端
-- **React 18** + **TypeScript**
-- **Vite** - 构建工具
-- **Zustand** - 状态管理
-- **TailwindCSS** - 样式框架
-- **Lucide React** - 图标库
-
-### AI 服务
-- **Google Gemini 2.0/2.5** - 图像分析与生成
-- **NovelAI V3** - 二次元图像生成
-
-## 📁 项目结构
-
-```
-Project Void Weaver/
-├── VoidWeaver-backend/          # Spring Boot 后端
-│   ├── src/main/java/
-│   │   └── com/codex/voidweaver/
-│   │       ├── controller/      # REST API 控制器
-│   │       ├── service/         # 业务逻辑层
-│   │       ├── model/           # 数据模型
-│   │       └── exception/       # 异常处理
-│   └── pom.xml
-│
-├── VoidWeaver-frontend/         # React 前端
-│   ├── src/
-│   │   ├── components/          # React 组件
-│   │   │   ├── editor/          # 编辑器组件
-│   │   │   ├── layout/          # 布局组件
-│   │   │   ├── ui/              # UI 组件
-│   │   │   └── visual/          # 视觉组件
-│   │   ├── api/                 # API 客户端
-│   │   ├── store/               # Zustand 状态管理
-│   │   ├── types/               # TypeScript 类型
-│   │   └── lib/                 # 工具函数
-│   └── package.json
-│
-└── README.md                    # 本文件
-```
-
-## 🔧 API 端点
-
-### 分析图片
-```http
-POST /api/analyze
-Content-Type: application/json
-
-{
-  "imageData": "base64_encoded_image",
-  "geminiApiKey": "your_gemini_key"
-}
-```
-
-### 生成图片
-```http
-POST /api/generate
-Content-Type: application/json
-
-{
-  "prompt": "anime style, 1girl, blue hair...",
-  "engine": "novelai" | "google-imagen",
-  "novelaiApiKey": "your_novelai_key",
-  "googleCredentials": "your_google_key",
-  "resolution": "832x1216",
-  "steps": 28,
-  "scale": 6
-}
-```
-
-### 精炼标签
-```http
-POST /api/refine
-Content-Type: application/json
-
-{
-  "modules": [...],
-  "instruction": "把头发改成粉色",
-  "geminiApiKey": "your_gemini_key"
-}
-```
-
-## ⚠️ 常见问题
-
-### Gemini 返回 429 错误
-**原因**：API 配额耗尽  
-**解决**：等待几分钟后重试，或升级到付费版
-
-### NovelAI 返回 401 错误
-**原因**：API Key 无效或已过期  
-**解决**：检查订阅状态，重新获取 API Key
-
-### 生成的图片不符合预期
-**解决方案**：
-1. 调整标签权重
-2. 增加采样步数
-3. 使用 Refine 功能微调
-4. 锁定重要模块后重新生成
-
-### 前端无法连接后端
-**检查**：确认后端运行在 `http://localhost:8080`
-
-## 💡 提示与技巧
-
-### 权重使用建议
-- **1.0** - 正常强度（默认）
-- **1.2-1.5** - 强调（如 `{1.3::blue eyes::`）
-- **0.7-0.9** - 弱化
-
-### NovelAI 最佳实践
-- 使用英文标签
-- 标签越具体越好
-- 采样步数建议 28-35
-- 适合二次元/动漫风格
-
-### Imagen 最佳实践
-- 支持自然语言描述
-- 适合写实/照片风格
-- 注意配额限制（免费版有限）
-
-## 📝 开发指南
-
-### 后端开发
-```bash
-cd VoidWeaver-backend
-mvn spring-boot:run
-```
-
-### 前端开发
-```bash
-cd VoidWeaver-frontend
-npm run dev
-```
-
-### 构建生产版本
-```bash
-# 后端
-cd VoidWeaver-backend
-mvn clean package
-
-# 前端
-cd VoidWeaver-frontend
-npm run build
-```
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📄 许可证
+## 📄 License
 
 MIT License
 
-## 🙏 致谢
-
-- [Google Gemini](https://ai.google.dev/) - 图像分析与生成
-- [NovelAI](https://novelai.net/) - 二次元图像生成
-- [Spring Boot](https://spring.io/projects/spring-boot) - 后端框架
-- [React](https://react.dev/) - 前端框架
-
 ---
-
-**Made with ❤️ by Void Weaver Team**
+[中文文档 (Chinese Documentation)](README_CN.md) | **Made with ❤️ by the Void Weaver Team**

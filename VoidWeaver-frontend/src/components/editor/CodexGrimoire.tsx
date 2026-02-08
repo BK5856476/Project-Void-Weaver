@@ -49,6 +49,9 @@ const CodexGrimoire: FC = () => {
         isImg2Img,
         setIsImg2Img,
         addRefinementHistory,
+        deepThinkingEnabled,
+        setSketchImage,
+        setThinkingLog,
     } = useVoidWeaverStore()
 
     /**
@@ -129,30 +132,97 @@ const CodexGrimoire: FC = () => {
 
             // 组装 prompt（使用工具函数）
             const prompt = assemblePrompt(modules, engine)
-
             console.log('生成的 prompt:', prompt)
 
-            // 调用 API
-            const response = await generateImage({
-                prompt,
-                engine,
-                novelaiApiKey: engine === 'novelai' ? novelaiApiKey : undefined,
-                googleCredentials: engine === 'google-imagen' ? activeGoogleKey : undefined,
-                resolution,
-                steps,
-                scale,
-                // Img2Img 参数
-                image: isImg2Img && sourceImage ? sourceImage : undefined,
-                strength: isImg2Img ? 0.7 : undefined // 默认重绘幅度 0.7
-            })
+            // 重置思考日志和草图
+            setThinkingLog([])
+            setSketchImage(null)
 
-            // 保存生成的图片（添加到历史）
-            addGeneratedImage(response.imageData)
-            // 自动切换到 "New World" 视图
-            setCurrentView('generated')
+            // 如果启用了各 Deep Thinking (仅限 Google 引擎)，打开模态框并开始流式传输
+            if (engine === 'google-imagen' && deepThinkingEnabled) {
+                // 打开模态框显示过程
+                if (!useVoidWeaverStore.getState().isDeepThinkingModalOpen) {
+                    useVoidWeaverStore.getState().toggleDeepThinkingModal()
+                }
 
-            console.log('生成完成！')
-            showToast({ type: 'success', message: 'Image generated successfully!' })
+                // 导入 streamGenerateImage (动态导入或假设已在顶部导入)
+                const { streamGenerateImage } = await import('@/lib/utils')
+
+                const response = await streamGenerateImage(
+                    {
+                        prompt,
+                        engine,
+                        googleCredentials: activeGoogleKey,
+                        resolution,
+                        steps,
+                        scale,
+                        image: isImg2Img && sourceImage ? sourceImage : undefined,
+                        strength: isImg2Img ? 0.7 : undefined,
+                        deepThinking: true
+                    },
+                    (log) => {
+                        // 实时更新日志
+                        const currentLogs = useVoidWeaverStore.getState().thinkingLog
+                        setThinkingLog([...currentLogs, log])
+                    },
+                    (sketch) => {
+                        // 实时更新草图
+                        setSketchImage(sketch)
+                    },
+                    (error) => {
+                        console.error('Stream Error:', error)
+                        showToast({ type: 'error', message: `Thinking Error: ${error}` })
+                    }
+                )
+
+                // 生成完成的处理 (与普通生成相同)
+                if (response && response.imageData) {
+                    // 保存生成的图片（添加到历史），如果不传对象则无法持久化 log
+                    addGeneratedImage({
+                        imageData: response.imageData,
+                        thinkingLog: response.thinkingLog,
+                        sketchImage: response.sketchImage,
+                        prompt: prompt
+                    })
+
+                    // 确保最后的状态一致
+                    if (response.sketchImage) setSketchImage(response.sketchImage)
+                    if (response.thinkingLog) setThinkingLog(response.thinkingLog) // 使用最终完整日志
+
+                    // 自动切换到 "New World" 视图
+                    setCurrentView('generated')
+
+                    console.log('Deep Thinking 生成完成！')
+                    showToast({ type: 'success', message: 'Manifestation Complete!' })
+                }
+
+            } else {
+                // 普通生成逻辑 (NovelAI 或 未开启 Deep Thinking)
+                const response = await generateImage({
+                    prompt,
+                    engine,
+                    novelaiApiKey: engine === 'novelai' ? novelaiApiKey : undefined,
+                    googleCredentials: engine === 'google-imagen' ? activeGoogleKey : undefined,
+                    resolution,
+                    steps,
+                    scale,
+                    // Img2Img 参数
+                    image: isImg2Img && sourceImage ? sourceImage : undefined,
+                    strength: isImg2Img ? 0.7 : undefined, // 默认重绘幅度 0.7
+                    // Deep Thinking (false)
+                    deepThinking: false
+                })
+
+                // 保存生成的图片（添加到历史）
+                addGeneratedImage(response.imageData)
+
+                // 自动切换到 "New World" 视图
+                setCurrentView('generated')
+
+                console.log('生成完成！')
+                showToast({ type: 'success', message: 'Image generated successfully!' })
+            }
+
         } catch (error) {
             console.error('生成失败:', error)
             showToast({

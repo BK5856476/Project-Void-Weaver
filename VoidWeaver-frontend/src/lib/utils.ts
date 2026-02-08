@@ -106,7 +106,7 @@ export function downloadImage(base64Data: string, filename: string = 'void-weave
  * - 权重 = 1.0：直接输出标签文本
  * - 权重 ≠ 1.0：使用 {weight}::{tag}:: 格式（如 1.5::silver hair::）
  */
-export function assemblePrompt(modules: ModuleDto[], engine: EngineType): string {
+export function assemblePrompt(modules: ModuleDto[], _engine: EngineType): string {
     // 展平所有标签
     const allTags = modules.flatMap(m => m.tags)
 
@@ -128,4 +128,77 @@ export function assemblePrompt(modules: ModuleDto[], engine: EngineType): string
 
     // 用逗号和空格连接并返回
     return formattedTags.join(', ')
+}
+
+/**
+ * 流式生成图片 (SSE)
+ * 
+ * @param params - 生成请求参数
+ * @param onLog - 实时日志回调
+ * @param onSketch - 实时草图回调
+ * @param onError - 错误回调
+ * @returns Promise<GenerateResponse> - 最终生成结果
+ */
+export async function streamGenerateImage(
+    params: any,
+    onLog: (log: string) => void,
+    onSketch: (sketch: string) => void,
+    onError: (error: string) => void
+): Promise<any> {
+    const response = await fetch('/api/generate/stream', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+    })
+
+    if (!response.ok) {
+        throw new Error(`Stream Error: ${response.statusText}`)
+    }
+
+    if (!response.body) {
+        throw new Error('ReadableStream not supported in this browser.')
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    // Process the stream
+    while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        let eventType = 'message'
+
+        for (const line of lines) {
+            const trimmedLine = line.trim()
+
+            if (trimmedLine.startsWith('event:')) {
+                eventType = trimmedLine.substring(6).trim()
+            } else if (trimmedLine.startsWith('data:')) {
+                const data = trimmedLine.substring(5).trim()
+
+                try {
+                    if (eventType === 'log') {
+                        onLog(data)
+                    } else if (eventType === 'sketch') {
+                        onSketch(data)
+                    } else if (eventType === 'result') {
+                        // The result event contains the final JSON with thinkingLog
+                        const result = JSON.parse(data)
+                        return result
+                    } else if (eventType === 'error') {
+                        onError(data)
+                        throw new Error(data)
+                    }
+                } catch (e) {
+                    console.error('SSE Processing Error', e)
+                }
+            }
+        }
+    }
 }

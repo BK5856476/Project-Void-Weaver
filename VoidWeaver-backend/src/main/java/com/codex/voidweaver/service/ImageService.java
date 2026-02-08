@@ -11,6 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Service;
 
+import java.util.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +54,8 @@ public class ImageService {
         JsonNode candidates = root.path("candidates");
 
         if (candidates.isEmpty()) {
-            throw new ApiException("Gemini returned no candidates", "IMAGEN_ERROR");
+            log.error("Gemini returned no candidates. Full response: {}", json);
+            throw new ApiException("Gemini returned no candidates. Response: " + json, "IMAGEN_ERROR");
         }
 
         // 提取 Part 里的 inlineData
@@ -65,7 +69,8 @@ public class ImageService {
             }
         }
 
-        throw new ApiException("No image data found in response", "IMAGEN_ERROR");
+        log.error("No image data in response. Full response: {}", json);
+        throw new ApiException("No image data found. Response: " + json, "IMAGEN_ERROR");
     }
 
     /**
@@ -124,17 +129,13 @@ public class ImageService {
         return sb.toString();
     }
 
+    private final GeminiService geminiService;
+
     /**
      * 使用 Google Gemini (Imagen) 进行图片生成
      */
     private GenerateResponse generateWithGoogleGemini(GenerateRequest request) {
         log.info("Generating with Google Gemini Image Gen...");
-
-        // Preprocess prompt for weighting
-        String originalPrompt = request.getPrompt();
-        String processedPrompt = processGeminiPrompt(originalPrompt);
-        log.info("Original Prompt: {}", originalPrompt);
-        log.info("Processed Prompt (Weighted): {}", processedPrompt);
 
         // 从字段中获取 API Key
         String apiKey = request.getGoogleCredentials();
@@ -142,37 +143,225 @@ public class ImageService {
             throw new ApiException("Google API Key/Credentials is required", "INVALID_API_KEY");
         }
 
+        // Deep Thinking Logic - Blocking Fallback (deprecated, use stream)
+        if (Boolean.TRUE.equals(request.getDeepThinking())) {
+            return generateWithDeepThinking(request, apiKey);
+        }
+
+        // Standard Generation
+        // Preprocess prompt for weighting
+        String originalPrompt = request.getPrompt();
+        String processedPrompt = processGeminiPrompt(originalPrompt);
+        log.info("Original Prompt: {}", originalPrompt);
+        log.info("Processed Prompt (Weighted): {}", processedPrompt);
+
+        return internalGenerateGemini(processedPrompt, request.getImage(), apiKey, "gemini-3-pro-image-preview");
+    }
+
+    /**
+     * Deep Thinking Workflow - Blocking Version (Legacy/Fallback)
+     */
+    private GenerateResponse generateWithDeepThinking(GenerateRequest request, String apiKey) {
+        log.info("Starting Deep Thinking Mode (Blocking)...");
+        List<String> thinkingLog = new ArrayList<>();
+
+        // Step 1: Generate Sketch
+        thinkingLog.add("Phase 1: Manifesting initial concept sketch...");
+        GenerateResponse sketchResponse = internalGenerateGemini(request.getPrompt(), null, apiKey,
+                "gemini-3-pro-image-preview");
+        String sketchImage = sketchResponse.getImageData();
+        thinkingLog.add("Sketch generated.");
+
+        // Step 2: Vision Analysis
+        thinkingLog.add("Phase 2: Analyzing visual structure and composition...");
+        String critique = geminiService.critiqueImage(sketchImage, request.getPrompt(), apiKey);
+        thinkingLog.add("Critique: " + critique);
+
+        // Step 3: Style/Concept Expansion
+        thinkingLog.add("Phase 3: Consulting Void Archives for artistic styles...");
+        String styleTags = geminiService.suggestStyleTags(request.getPrompt(), apiKey);
+        thinkingLog.add("Identified Style Tags: " + styleTags);
+
+        // Step 4: Construct Optimized Prompt
+        thinkingLog.add("Phase 4: Refining generation matrix...");
+
+        // Style Injection for "Hand-drawn" feel
+        String positiveStyle = "rough brushstrokes, visible grain, noise, traditional media texture, uneven lines, sketchy, impasto, masterpiece, aesthetic";
+        String negativeStyle = "digital smoothing, polished, CGI, glossy, flat coloring, 3d render, plastic";
+
+        String refinedPrompt = String.format("%s, %s, 2::%s::, 1.5::%s::. Avoid: %s",
+                request.getPrompt(), positiveStyle, critique, styleTags, negativeStyle);
+
+        String processedRefinedPrompt = processGeminiPrompt(refinedPrompt);
+
+        // Step 5: Final Generation
+        thinkingLog.add("Phase 5: Final manifestation...");
+        GenerateResponse finalResponse = internalGenerateGemini(processedRefinedPrompt, request.getImage(), apiKey,
+                "gemini-3-pro-image-preview");
+
+        finalResponse.setSketchImage(sketchImage);
+        finalResponse.setThinkingLog(thinkingLog);
+
+        return finalResponse;
+    }
+
+    /**
+     * Deep Thinking Workflow
+     */
+    public void generateImageStream(GenerateRequest request, SseEmitter emitter) {
+        log.info("Streaming image generation for engine: {}", request.getEngine());
+        try {
+            if (request.getEngine() == EngineType.GOOGLE_IMAGEN) {
+                if (Boolean.TRUE.equals(request.getDeepThinking())) {
+                    generateWithDeepThinkingStream(request, request.getGoogleCredentials(), emitter);
+                } else {
+                    // Normal generation, just emit one result
+                    GenerateResponse response = generateWithGoogleGemini(request);
+                    emitter.send(SseEmitter.event().name("result").data(response));
+                    emitter.complete();
+                }
+            } else {
+                // NovelAI doesn't support deep thinking stream yet, just return result
+                GenerateResponse response = generateImage(request);
+                emitter.send(SseEmitter.event().name("result").data(response));
+                emitter.complete();
+            }
+        } catch (Exception e) {
+            log.error("Streaming error: {}", e.getMessage(), e);
+            try {
+                emitter.send(SseEmitter.event().name("error").data("Generation failed: " + e.getMessage()));
+                emitter.completeWithError(e);
+            } catch (Exception ex) {
+                // Ignore
+            }
+        }
+    }
+
+    private void generateWithDeepThinkingStream(GenerateRequest request, String apiKey, SseEmitter emitter)
+            throws Exception {
+        log.info("Starting Deep Thinking Stream...");
+        List<String> thinkingLog = new ArrayList<>();
+
+        // Helper to send log events
+        Runnable sendLog = () -> {
+            try {
+                String lastLog = thinkingLog.get(thinkingLog.size() - 1);
+                emitter.send(SseEmitter.event().name("log").data(lastLog));
+            } catch (Exception e) {
+                log.error("Failed to send log event", e);
+            }
+        };
+
+        // Step 1: Generate Sketch
+        String step1 = "Phase 1: Manifesting initial concept sketch...";
+        thinkingLog.add(step1);
+        sendLog.run();
+        log.info(step1);
+
+        GenerateResponse sketchResponse = internalGenerateGemini(request.getPrompt(), null, apiKey,
+                "gemini-3-pro-image-preview");
+        String sketchImage = sketchResponse.getImageData();
+        thinkingLog.add("Sketch generated.");
+        sendLog.run();
+
+        // Send sketch event
+        emitter.send(SseEmitter.event().name("sketch").data(sketchImage));
+
+        // Step 2: Vision Analysis
+        String step2 = "Phase 2: Analyzing visual structure and composition...";
+        thinkingLog.add(step2);
+        sendLog.run();
+        log.info(step2);
+
+        String critique = geminiService.critiqueImage(sketchImage, request.getPrompt(), apiKey);
+        thinkingLog.add("Critique: " + critique);
+        sendLog.run();
+
+        // Step 3: Style/Concept Expansion
+        String step3 = "Phase 3: Consulting Void Archives for artistic styles...";
+        thinkingLog.add(step3);
+        sendLog.run();
+        log.info(step3);
+
+        String styleTags = geminiService.suggestStyleTags(request.getPrompt(), apiKey);
+        thinkingLog.add("Identified Style Tags: " + styleTags);
+        sendLog.run();
+
+        // Step 4: Construct Optimized Prompt with Style Injection
+        String step4 = "Phase 4: Injecting artistic soul (Style Injection)...";
+        thinkingLog.add(step4);
+        sendLog.run();
+        log.info(step4);
+
+        // Style Injection for "Hand-drawn" feel with Matte Hair & Precise Colors
+        String positiveStyle = "rough brushstrokes, visible grain, noise, traditional media texture, uneven lines, sketchy, impasto, masterpiece, aesthetic, matte hair, soft lighting, diffused lighting, detailed hair strands, natural lighting, precise colors, tonal consistency, correct anatomy, perfect structure, refined details, broken highlights, textured hair";
+        String negativeStyle = "digital smoothing, polished, CGI, glossy, flat coloring, 3d render, plastic, shiny hair, glossy hair, plastic hair, strong highlights, continuous highlights, halo, banded highlights, anime hair highlights, angel ring, oily hair, wet hair, oversaturated, color bleeding, bad anatomy, distorted, blurry, missing limbs, extra limbs, bad hands";
+
+        // Construct refined prompt with "FIXES" emphasized
+        String refinedPrompt = String.format(
+                "Using the provided sketch as a reference, generate a final polished artwork. FIXES REQUIRED: %s. Prompt: %s, %s, 1.5::%s::. Avoid: %s",
+                critique, request.getPrompt(), positiveStyle, styleTags, negativeStyle);
+
+        // Note: Gemini doesn't support --no natively in prompt string usually, but we
+        // can append negative prompts if the model supports it or just rely on positive
+        // descriptions.
+        // For Gemini 3, we'll focus on strong positive descriptors.
+        refinedPrompt = String.format(
+                "Generate a final masterpiece based on the sketch. MANDATORY FIXES: %s. Content: %s, %s, 1.5::%s::. Avoid: %s",
+                critique, request.getPrompt(), positiveStyle, styleTags, negativeStyle);
+
+        String processedRefinedPrompt = processGeminiPrompt(refinedPrompt);
+        thinkingLog.add("Final Prompt Constructed.");
+        sendLog.run();
+
+        // Step 5: Final Generation
+        String step5 = "Phase 5: Final manifestation (Img2Img from Sketch)...";
+        thinkingLog.add(step5);
+        sendLog.run();
+        log.info(step5);
+
+        // Use the generated sketch as the input image for the final step to maintain
+        // consistency
+        GenerateResponse finalResponse = internalGenerateGemini(processedRefinedPrompt, sketchImage, apiKey,
+                "gemini-3-pro-image-preview");
+
+        // Store logs and sketch in response
+        finalResponse.setSketchImage(sketchImage);
+        finalResponse.setThinkingLog(thinkingLog);
+
+        // Send final result
+        emitter.send(SseEmitter.event().name("result").data(finalResponse));
+        emitter.complete();
+    }
+
+    private GenerateResponse internalGenerateGemini(String prompt, String inputImage, String apiKey, String model) {
         try {
             Map<String, Object> bodyMap;
-            String model = "gemini-2.5-flash-image"; // 默认 T2I 模型
 
             // 判断是否为 Img2Img (图片修改)
-            if (request.getImage() != null && !request.getImage().isEmpty()) {
-                log.info("Switching to Img2Img mode (Multiturn Editing)...");
-                model = "gemini-3-pro-image-preview"; // 文档要求使用此模型进行编辑
+            if (inputImage != null && !inputImage.isEmpty()) {
+                log.info("Img2Img mode...");
+                model = "gemini-3-pro-image-preview"; // Img2Img usually requires specific model
 
-                // 构建 Img2Img 请求 (将原图作为用户输入的一部分)
-                // User: "Instruction" + [Image]
-
-                bodyMap = Map.of(
-                        "contents", List.of(
-                                Map.of(
-                                        "role", "user",
-                                        "parts", List.of(
-                                                Map.of("text", processedPrompt), // 使用处理后的提示词
-                                                Map.of(
-                                                        "inline_data", Map.of(
-                                                                "mime_type", "image/png",
-                                                                "data", request.getImage()))))),
-                        "generationConfig", Map.of(
-                                "responseModalities", List.of("IMAGE")));
+                bodyMap = new java.util.HashMap<>();
+                bodyMap.put("contents", List.of(
+                        Map.of(
+                                "role", "user",
+                                "parts", List.of(
+                                        Map.of("text", prompt),
+                                        Map.of(
+                                                "inline_data", Map.of(
+                                                        "mime_type", "image/png",
+                                                        "data", inputImage))))));
+                bodyMap.put("generationConfig", Map.of(
+                        "responseModalities", List.of("IMAGE")));
             } else {
                 // 标准 T2I 生成
-                bodyMap = Map.of(
-                        "contents", List.of(Map.of(
-                                "parts", List.of(Map.of("text", processedPrompt)))), // 使用处理后的提示词
-                        "generationConfig", Map.of(
-                                "responseModalities", List.of("IMAGE")));
+                bodyMap = new java.util.HashMap<>();
+                bodyMap.put("contents", List.of(Map.of(
+                        "parts", List.of(Map.of("text", prompt)))));
+                bodyMap.put("generationConfig", Map.of(
+                        "responseModalities", List.of("IMAGE")));
             }
 
             String jsonBody = objectMapper.writeValueAsString(bodyMap);
@@ -190,10 +379,11 @@ public class ImageService {
 
                 if (!response.isSuccessful()) {
                     log.error("Google Image Gen Failed: {} - {}", response.code(), responseBody);
-                    // Return the actual error message from Google
                     throw new ApiException("Google Error: " + responseBody, "IMAGEN_ERROR");
                 }
 
+                log.info("Gemini Raw Response: {}", responseBody);
+                System.err.println("DEBUG_GEMINI_mRESPONSE: " + responseBody);
                 return parseImageResponse(responseBody);
             }
 

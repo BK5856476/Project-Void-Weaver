@@ -52,4 +52,7 @@ public class GenerateRequest {
 
     /** Img2Img 重绘幅度 (0.0 - 0.99) */
     private Double strength;
+
+    /** 是否开启深度思考模式 */
+    private Boolean deepThinking;
 }

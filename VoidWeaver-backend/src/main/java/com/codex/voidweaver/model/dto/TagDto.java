@@ -24,4 +24,8 @@ public class TagDto {
 
     /** 唯一标识符 */
     private String id;
+
+    /** 是否隐藏 (不显示在前端，但参与生成) */
+    @Builder.Default
+    private Boolean hidden = false;
 }
