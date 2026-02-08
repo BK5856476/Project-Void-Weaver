@@ -68,7 +68,7 @@ export const useVoidWeaverStore = create<VoidWeaverState>()(
             googleCredentials: '',      // Google Vertex AI 凭证（可选）
 
             // ========== 引擎设置 ==========
-            engine: 'novelai',          // 默认引擎：NovelAI
+            engine: 'google-imagen',    // 默认引擎：Google Imagen
             resolution: '832x1216',     // 默认分辨率：竖屏
             steps: 28,                  // 默认采样步数：28
             scale: 6,                   // 默认相关性/CFG Scale：6

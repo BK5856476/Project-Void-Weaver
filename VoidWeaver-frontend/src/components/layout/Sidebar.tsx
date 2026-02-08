@@ -66,6 +66,18 @@ const Sidebar: FC = () => {
                     </label>
                     {/* 分段按钮组 */}
                     <div className="flex gap-1 bg-zinc-900 p-1 rounded-md border border-zinc-800">
+                        {/* Google Imagen 按钮 */}
+                        <button
+                            onClick={() => setEngine('google-imagen')}
+                            className={cn(
+                                'flex-1 text-xs py-1.5 px-2 rounded transition-all',
+                                engine === 'google-imagen'
+                                    ? 'bg-zinc-800 text-zinc-200 shadow-sm border border-zinc-700'
+                                    : 'text-zinc-500 hover:text-zinc-300'
+                            )}
+                        >
+                            Gemini
+                        </button>
                         {/* NovelAI 按钮 */}
                         <button
                             onClick={() => setEngine('novelai')}
@@ -77,18 +89,6 @@ const Sidebar: FC = () => {
                             )}
                         >
                             NovelAI
-                        </button>
-                        {/* Google Imagen 按钮 */}
-                        <button
-                            onClick={() => setEngine('google-imagen')}
-                            className={cn(
-                                'flex-1 text-xs py-1.5 px-2 rounded transition-all',
-                                engine === 'google-imagen'
-                                    ? 'bg-zinc-800 text-zinc-200 shadow-sm border border-zinc-700'
-                                    : 'text-zinc-500 hover:text-zinc-300'
-                            )}
-                        >
-                            Imagen
                         </button>
                     </div>
                 </div>
@@ -147,7 +147,7 @@ const Sidebar: FC = () => {
                     System Config {/* 系统配置 */}
                 </button>
             </div>
-        </aside>
+        </aside >
     )
 }
 

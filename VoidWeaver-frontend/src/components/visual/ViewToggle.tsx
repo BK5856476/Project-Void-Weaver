@@ -38,7 +38,7 @@ const ViewToggle: FC = () => {
                 )}
             >
                 <Eye className="w-3 h-3" /> {/* 眼睛图标 */}
-                Source Reality {/* 源现实 */}
+                Source
             </button>
 
             {/* New World 按钮 */}
@@ -52,7 +52,7 @@ const ViewToggle: FC = () => {
                 )}
             >
                 <Sparkles className="w-3 h-3" /> {/* 星星图标 */}
-                New World {/* 新世界 */}
+                New Image
             </button>
 
         </div>

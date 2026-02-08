@@ -46,7 +46,7 @@ const GrimoireToolbar: FC<GrimoireToolbarProps> = ({
             <div className="flex items-center gap-2 text-zinc-400">
                 <Terminal className="w-4 h-4" />
                 <span className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-                    Codex Grimoire // v2.4
+                    Void Weaver // v1.0
                 </span>
             </div>
 
@@ -57,8 +57,8 @@ const GrimoireToolbar: FC<GrimoireToolbarProps> = ({
                 <button
                     onClick={onToggleImg2Img}
                     className={`inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors h-9 px-3 border gap-2 ${isImg2Img
-                            ? 'bg-cyan-900/50 border-cyan-500 text-cyan-400'
-                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-700'
+                        ? 'bg-cyan-900/50 border-cyan-500 text-cyan-400'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-700'
                         }`}
                     title="Toggle Text-to-Image / Image-to-Image"
                 >

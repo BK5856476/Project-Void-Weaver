@@ -19,7 +19,6 @@ import { useVoidWeaverStore } from '@/store/useVoidWeaverStore'
 const STORAGE_KEYS = {
     GEMINI: 'voidweaver_gemini_key',
     NOVELAI: 'voidweaver_novelai_key',
-    GOOGLE: 'voidweaver_google_credentials',
 }
 
 const ApiKeyInput: FC = () => {
@@ -29,26 +28,21 @@ const ApiKeyInput: FC = () => {
         setGeminiApiKey,
         novelaiApiKey,
         setNovelaiApiKey,
-        googleCredentials,
-        setGoogleCredentials,
         engine
     } = useVoidWeaverStore()
 
     // 本地状态：控制密码显示/隐藏
     const [showGemini, setShowGemini] = useState(false)
     const [showNovelai, setShowNovelai] = useState(false)
-    const [showGoogle, setShowGoogle] = useState(false)
 
     // 组件挂载时从 localStorage 加载 API Keys
     useEffect(() => {
         const savedGemini = localStorage.getItem(STORAGE_KEYS.GEMINI)
         const savedNovelai = localStorage.getItem(STORAGE_KEYS.NOVELAI)
-        const savedGoogle = localStorage.getItem(STORAGE_KEYS.GOOGLE)
 
         if (savedGemini) setGeminiApiKey(savedGemini)
         if (savedNovelai) setNovelaiApiKey(savedNovelai)
-        if (savedGoogle) setGoogleCredentials(savedGoogle)
-    }, [setGeminiApiKey, setNovelaiApiKey, setGoogleCredentials])
+    }, [setGeminiApiKey, setNovelaiApiKey])
 
     /**
      * 保存 API Keys 到 localStorage
@@ -60,10 +54,7 @@ const ApiKeyInput: FC = () => {
         if (novelaiApiKey) {
             localStorage.setItem(STORAGE_KEYS.NOVELAI, novelaiApiKey)
         }
-        if (googleCredentials) {
-            localStorage.setItem(STORAGE_KEYS.GOOGLE, googleCredentials)
-        }
-        alert('API Keys 已保存到本地！')
+        alert('API Keys saved locally!')
     }
 
     return (
@@ -88,29 +79,31 @@ const ApiKeyInput: FC = () => {
                 </button>
             </div>
 
-            {/* Gemini API Key（必填） */}
-            <div>
-                <label className="text-[10px] text-zinc-600 mb-1 block">
-                    Gemini API Key <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                    <input
-                        type={showGemini ? 'text' : 'password'}
-                        value={geminiApiKey}
-                        onChange={(e) => setGeminiApiKey(e.target.value)}
-                        placeholder="sk-..."
-                        className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-md h-8 px-2 pr-8 focus:outline-none focus:border-cyan-500 font-mono"
-                    />
-                    {/* 显示/隐藏按钮 */}
-                    <button
-                        type="button"
-                        onClick={() => setShowGemini(!showGemini)}
-                        className="absolute right-2 top-2 text-zinc-600 hover:text-zinc-400"
-                    >
-                        {showGemini ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    </button>
+            {/* Gemini API Key（当引擎为 Google Imagen 时显示） */}
+            {engine === 'google-imagen' && (
+                <div>
+                    <label className="text-[10px] text-zinc-600 mb-1 block">
+                        Gemini API Key <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                        <input
+                            type={showGemini ? 'text' : 'password'}
+                            value={geminiApiKey}
+                            onChange={(e) => setGeminiApiKey(e.target.value)}
+                            placeholder="sk-..."
+                            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-md h-8 px-2 pr-8 focus:outline-none focus:border-cyan-500 font-mono"
+                        />
+                        {/* 显示/隐藏按钮 */}
+                        <button
+                            type="button"
+                            onClick={() => setShowGemini(!showGemini)}
+                            className="absolute right-2 top-2 text-zinc-600 hover:text-zinc-400"
+                        >
+                            {showGemini ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* NovelAI API Key（当引擎为 NovelAI 时显示） */}
             {engine === 'novelai' && (
@@ -132,35 +125,6 @@ const ApiKeyInput: FC = () => {
                             className="absolute right-2 top-2 text-zinc-600 hover:text-zinc-400"
                         >
                             {showNovelai ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Google Vertex AI 凭证（当引擎为 Google Imagen 时显示） */}
-            {engine === 'google-imagen' && (
-                <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-600 block">
-                        Google Credentials / API Key
-                    </label>
-                    <p className="text-[9px] text-zinc-500 italic pb-1">
-                        Tip: You can use your Gemini API Key here if you don't have a specific GCP JSON.
-                    </p>
-                    <div className="relative">
-                        <textarea
-                            value={googleCredentials}
-                            onChange={(e) => setGoogleCredentials(e.target.value)}
-                            placeholder='Enter Key or JSON here...'
-                            style={{ WebkitTextSecurity: showGoogle ? 'none' : 'disc' } as any}
-                            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-md p-2 pr-8 focus:outline-none focus:border-cyan-500 font-mono resize-none"
-                            rows={3}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowGoogle(!showGoogle)}
-                            className="absolute right-2 top-2 text-zinc-600 hover:text-zinc-400"
-                        >
-                            {showGoogle ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                         </button>
                     </div>
                 </div>

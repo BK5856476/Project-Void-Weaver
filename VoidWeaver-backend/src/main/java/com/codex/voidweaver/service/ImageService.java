@@ -69,10 +69,72 @@ public class ImageService {
     }
 
     /**
+     * Preprocess the prompt for Gemini:
+     * Convert "weight::text::" format to natural language descriptors.
+     * Example: "1.5::cat::" -> "highly detailed cat"
+     */
+    private String processGeminiPrompt(String prompt) {
+        if (prompt == null || prompt.isEmpty()) {
+            return prompt;
+        }
+
+        // Regex to match "weight::text::"
+        // Groups: 1 = weight (number), 2 = text
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)::(.*?)::");
+        java.util.regex.Matcher matcher = pattern.matcher(prompt);
+
+        StringBuilder sb = new StringBuilder();
+        int lastEnd = 0;
+
+        while (matcher.find()) {
+            // Append text before the match
+            sb.append(prompt, lastEnd, matcher.start());
+
+            try {
+                double weight = Double.parseDouble(matcher.group(1));
+                String text = matcher.group(2).trim();
+                String descriptors = "";
+
+                if (weight >= 2.0) {
+                    descriptors = "extremely detailed, emphasized " + text;
+                } else if (weight >= 1.5) {
+                    descriptors = "highly detailed, " + text;
+                } else if (weight >= 1.2) {
+                    descriptors = "detailed, " + text;
+                } else if (weight >= 0.9) {
+                    descriptors = text; // Normal weight
+                } else if (weight >= 0.8) {
+                    descriptors = "subtle " + text;
+                } else {
+                    descriptors = "faint, slightly visible " + text;
+                }
+                sb.append(descriptors);
+
+            } catch (NumberFormatException e) {
+                // If weight parsing fails, just append original text
+                sb.append(matcher.group(0));
+            }
+
+            lastEnd = matcher.end();
+        }
+
+        // Append remaining text
+        sb.append(prompt.substring(lastEnd));
+
+        return sb.toString();
+    }
+
+    /**
      * 使用 Google Gemini (Imagen) 进行图片生成
      */
     private GenerateResponse generateWithGoogleGemini(GenerateRequest request) {
         log.info("Generating with Google Gemini Image Gen...");
+
+        // Preprocess prompt for weighting
+        String originalPrompt = request.getPrompt();
+        String processedPrompt = processGeminiPrompt(originalPrompt);
+        log.info("Original Prompt: {}", originalPrompt);
+        log.info("Processed Prompt (Weighted): {}", processedPrompt);
 
         // 从字段中获取 API Key
         String apiKey = request.getGoogleCredentials();
@@ -97,7 +159,7 @@ public class ImageService {
                                 Map.of(
                                         "role", "user",
                                         "parts", List.of(
-                                                Map.of("text", request.getPrompt()), // 提示词
+                                                Map.of("text", processedPrompt), // 使用处理后的提示词
                                                 Map.of(
                                                         "inline_data", Map.of(
                                                                 "mime_type", "image/png",
@@ -108,7 +170,7 @@ public class ImageService {
                 // 标准 T2I 生成
                 bodyMap = Map.of(
                         "contents", List.of(Map.of(
-                                "parts", List.of(Map.of("text", request.getPrompt())))),
+                                "parts", List.of(Map.of("text", processedPrompt)))), // 使用处理后的提示词
                         "generationConfig", Map.of(
                                 "responseModalities", List.of("IMAGE")));
             }
