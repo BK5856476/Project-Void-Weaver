@@ -5,9 +5,11 @@ import { useVoidWeaverStore } from '@/store/useVoidWeaverStore'
 interface DeepThinkingModalProps {
     isOpen: boolean
     onClose: () => void
+    onCancel?: () => void
+    isGenerating?: boolean
 }
 
-const DeepThinkingModal: FC<DeepThinkingModalProps> = ({ isOpen, onClose }) => {
+const DeepThinkingModal: FC<DeepThinkingModalProps> = ({ isOpen, onClose, onCancel, isGenerating = false }) => {
     const { thinkingLog, sketchImage } = useVoidWeaverStore()
     const [activeStep, setActiveStep] = useState(0)
     const [isVisible, setIsVisible] = useState(false)
@@ -66,9 +68,19 @@ const DeepThinkingModal: FC<DeepThinkingModalProps> = ({ isOpen, onClose }) => {
                                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/50 to-transparent pointer-events-none" />
                             </div>
                         ) : (
-                            <div className="text-zinc-700 flex flex-col items-center gap-4">
-                                <div className="w-16 h-16 rounded-full border-2 border-dashed border-zinc-800 animate-spin-slow" />
-                                <span className="text-xs font-mono">Awaiting Visual Data...</span>
+                            <div className="text-zinc-700 flex flex-col items-center gap-6">
+                                <div className="relative">
+                                    <div className="w-20 h-20 rounded-full border-4 border-dashed border-zinc-800 animate-spin" style={{ animationDuration: '3s' }} />
+                                    <div className="absolute inset-0 w-20 h-20 rounded-full border-4 border-t-cyan-500/50 animate-spin" style={{ animationDuration: '1.5s' }} />
+                                </div>
+                                <div className="flex flex-col items-center gap-2">
+                                    <span className="text-xs font-mono animate-pulse">Manifesting visual data...</span>
+                                    <div className="flex gap-1">
+                                        <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -81,12 +93,22 @@ const DeepThinkingModal: FC<DeepThinkingModalProps> = ({ isOpen, onClose }) => {
                             <Terminal className="w-4 h-4" />
                             <span className="text-xs font-mono">Thinking Process Log</span>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="p-1 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {isGenerating && onCancel && (
+                                <button
+                                    onClick={onCancel}
+                                    className="px-3 py-1 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded text-xs font-mono transition-colors border border-red-800/50"
+                                >
+                                    Cancel
+                                </button>
+                            )}
+                            <button
+                                onClick={onClose}
+                                className="p-1 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex-1 p-6 overflow-y-auto font-mono text-sm space-y-4">

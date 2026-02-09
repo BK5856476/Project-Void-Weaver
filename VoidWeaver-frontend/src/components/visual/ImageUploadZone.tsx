@@ -111,7 +111,7 @@ const ImageUploadZone: FC<ImageUploadZoneProps> = ({ isGlowing = false }) => {
                 className={`w-full h-full max-h-[600px] border-2 border-dashed border-zinc-800 rounded-lg flex flex-col items-center justify-center gap-4 bg-zinc-900/20 hover:bg-zinc-900/40 transition-all duration-500 group cursor-pointer ${glowStyles}`}
             >
                 {/* 上传图标（圆形容器） */}
-                <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 group-hover:border-cyan-500/50 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] transition-all">
+                <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 group-hover:border-cyan-500/50 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] transition-all animate-pulse">
                     <Upload className="w-6 h-6 text-zinc-500 group-hover:text-cyan-400" />
                 </div>
 

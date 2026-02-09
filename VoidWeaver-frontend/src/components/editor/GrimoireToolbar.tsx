@@ -70,7 +70,7 @@ const GrimoireToolbar: FC<GrimoireToolbarProps> = ({
                 <button
                     onClick={onCopy}
                     className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors h-9 w-9 border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="复制完整提示词"
+                    title="Copy Full Prompt"
                 >
                     <Copy className="w-4 h-4" />
                 </button>

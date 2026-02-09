@@ -16,7 +16,7 @@ public class HttpClientConfig {
     public OkHttpClient okHttpClient() {
         return new OkHttpClient.Builder()
                 .connectTimeout(Duration.ofSeconds(30))
-                .readTimeout(Duration.ofSeconds(120)) // AI operations can take time
+                .readTimeout(Duration.ofSeconds(300)) // Deep Thinking需要更长时间
                 .writeTimeout(Duration.ofSeconds(60))
                 .build();
     }

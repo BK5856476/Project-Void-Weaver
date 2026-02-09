@@ -164,41 +164,57 @@ export async function streamGenerateImage(
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
 
+    let buffer = ''
+    let currentEvent = 'message'
+    let currentData: string[] = []
+
     // Process the stream
     while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const chunk = decoder.decode(value, { stream: true })
-        const lines = chunk.split('\n')
+        buffer += decoder.decode(value, { stream: true })
 
-        let eventType = 'message'
+        // Process complete events (separated by double newline)
+        const events = buffer.split('\n\n')
+        buffer = events.pop() || '' // Keep incomplete event in buffer
 
-        for (const line of lines) {
-            const trimmedLine = line.trim()
+        for (const event of events) {
+            if (!event.trim()) continue
 
-            if (trimmedLine.startsWith('event:')) {
-                eventType = trimmedLine.substring(6).trim()
-            } else if (trimmedLine.startsWith('data:')) {
-                const data = trimmedLine.substring(5).trim()
+            const lines = event.split('\n')
+            currentData = []
 
-                try {
-                    if (eventType === 'log') {
-                        onLog(data)
-                    } else if (eventType === 'sketch') {
-                        onSketch(data)
-                    } else if (eventType === 'result') {
-                        // The result event contains the final JSON with thinkingLog
-                        const result = JSON.parse(data)
-                        return result
-                    } else if (eventType === 'error') {
-                        onError(data)
-                        throw new Error(data)
-                    }
-                } catch (e) {
-                    console.error('SSE Processing Error', e)
+            for (const line of lines) {
+                if (line.startsWith('event:')) {
+                    currentEvent = line.substring(6).trim()
+                } else if (line.startsWith('data:')) {
+                    currentData.push(line.substring(5).trim())
                 }
             }
+
+            // Process complete event
+            if (currentData.length > 0) {
+                const fullData = currentData.join('')
+
+                try {
+                    if (currentEvent === 'log') {
+                        onLog(fullData)
+                    } else if (currentEvent === 'sketch') {
+                        onSketch(fullData)
+                    } else if (currentEvent === 'result') {
+                        const result = JSON.parse(fullData)
+                        return result
+                    } else if (currentEvent === 'error') {
+                        onError(fullData)
+                        throw new Error(fullData)
+                    }
+                } catch (e) {
+                    console.error('SSE Processing Error:', e, 'Data:', fullData.substring(0, 200))
+                }
+            }
+
+            currentEvent = 'message' // Reset
         }
     }
 }

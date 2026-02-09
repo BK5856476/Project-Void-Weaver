@@ -29,7 +29,7 @@ public class ImageService {
     private final ObjectMapper objectMapper;
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(Duration.ofSeconds(30))
-            .readTimeout(Duration.ofSeconds(120)) // 生成图片耗时较长
+            .readTimeout(Duration.ofSeconds(300)) // Deep Thinking需要更长时间
             .build();
 
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
@@ -50,27 +50,33 @@ public class ImageService {
      * 解析 Gemini 返回的图片数据
      */
     private GenerateResponse parseImageResponse(String json) throws Exception {
-        JsonNode root = objectMapper.readTree(json);
-        JsonNode candidates = root.path("candidates");
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode candidates = root.path("candidates");
 
-        if (candidates.isEmpty()) {
-            log.error("Gemini returned no candidates. Full response: {}", json);
-            throw new ApiException("Gemini returned no candidates. Response: " + json, "IMAGEN_ERROR");
-        }
-
-        // 提取 Part 里的 inlineData
-        JsonNode parts = candidates.get(0).path("content").path("parts");
-        for (JsonNode part : parts) {
-            if (part.has("inlineData")) {
-                String base64Data = part.path("inlineData").path("data").asText();
-                return GenerateResponse.builder()
-                        .imageData(base64Data)
-                        .build();
+            if (candidates.isEmpty()) {
+                log.error("Gemini returned no candidates. Full response: {}", json);
+                throw new ApiException("Gemini returned no candidates. Response: " + json, "IMAGEN_ERROR");
             }
-        }
 
-        log.error("No image data in response. Full response: {}", json);
-        throw new ApiException("No image data found. Response: " + json, "IMAGEN_ERROR");
+            // 提取 Part 里的 inlineData
+            JsonNode parts = candidates.get(0).path("content").path("parts");
+            for (JsonNode part : parts) {
+                if (part.has("inlineData")) {
+                    String base64Data = part.path("inlineData").path("data").asText();
+                    return GenerateResponse.builder()
+                            .imageData(base64Data)
+                            .build();
+                }
+            }
+
+            log.error("No image data in response. Full response: {}", json);
+            throw new ApiException("No image data found. Response: " + json, "IMAGEN_ERROR");
+        } catch (com.fasterxml.jackson.core.JsonParseException e) {
+            log.error("JSON Parse Error. Invalid JSON from Gemini. First 200 chars: {}",
+                    json.substring(0, Math.min(200, json.length())));
+            throw new ApiException("Invalid JSON from Gemini API: " + e.getMessage(), "IMAGEN_ERROR");
+        }
     }
 
     /**
@@ -294,8 +300,8 @@ public class ImageService {
         log.info(step4);
 
         // Style Injection for "Hand-drawn" feel with Matte Hair & Precise Colors
-        String positiveStyle = "rough brushstrokes, visible grain, noise, traditional media texture, uneven lines, sketchy, impasto, masterpiece, aesthetic, matte hair, soft lighting, diffused lighting, detailed hair strands, natural lighting, precise colors, tonal consistency, correct anatomy, perfect structure, refined details, broken highlights, textured hair";
-        String negativeStyle = "digital smoothing, polished, CGI, glossy, flat coloring, 3d render, plastic, shiny hair, glossy hair, plastic hair, strong highlights, continuous highlights, halo, banded highlights, anime hair highlights, angel ring, oily hair, wet hair, oversaturated, color bleeding, bad anatomy, distorted, blurry, missing limbs, extra limbs, bad hands";
+        String positiveStyle = "rough brushstrokes, visible brushstrokes, hand-painted texture, visible grain, noise, traditional media texture, uneven lines, sketchy, impasto, masterpiece, aesthetic, matte hair, dull hair finish, non-reflective hair, soft lighting, diffused lighting, detailed hair strands with brush marks, natural lighting, precise colors, tonal consistency, correct anatomy, perfect structure, refined details, broken highlights, scattered light, textured hair, painterly hair";
+        String negativeStyle = "digital smoothing, polished, CGI, glossy, flat coloring, 3d render, plastic, shiny hair, glossy hair, plastic hair, reflective hair, strong highlights, continuous highlights, unbroken highlights, highlight bands, halo, banded highlights, anime hair highlights, angel ring, light streaks, oily hair, wet hair, slick hair, oversaturated, color bleeding, bad anatomy, distorted, blurry, missing limbs, extra limbs, bad hands";
 
         // Construct refined prompt with "FIXES" emphasized
         String refinedPrompt = String.format(
@@ -322,16 +328,31 @@ public class ImageService {
 
         // Use the generated sketch as the input image for the final step to maintain
         // consistency
-        GenerateResponse finalResponse = internalGenerateGemini(processedRefinedPrompt, sketchImage, apiKey,
-                "gemini-3-pro-image-preview");
+        try {
+            log.info("Starting final Img2Img generation with sketch ({} chars)", sketchImage.length());
+            GenerateResponse finalResponse = internalGenerateGemini(processedRefinedPrompt, sketchImage, apiKey,
+                    "gemini-3-pro-image-preview");
+            log.info("Final image generated successfully");
 
-        // Store logs and sketch in response
-        finalResponse.setSketchImage(sketchImage);
-        finalResponse.setThinkingLog(thinkingLog);
+            thinkingLog.add("✓ Final image manifestation complete! Image ready.");
+            sendLog.run();
 
-        // Send final result
-        emitter.send(SseEmitter.event().name("result").data(finalResponse));
-        emitter.complete();
+            // Store logs and sketch in response
+            finalResponse.setSketchImage(sketchImage);
+            finalResponse.setThinkingLog(thinkingLog);
+
+            // Send final result
+            log.info("Sending final result to client");
+            emitter.send(SseEmitter.event().name("result").data(finalResponse));
+            emitter.complete();
+            log.info("Deep Thinking stream completed successfully");
+        } catch (Exception e) {
+            log.error("Phase 5 failed: {}", e.getMessage(), e);
+            thinkingLog.add("ERROR in Phase 5: " + e.getMessage());
+            sendLog.run();
+            emitter.send(SseEmitter.event().name("error").data("Phase 5 failed: " + e.getMessage()));
+            emitter.completeWithError(e);
+        }
     }
 
     private GenerateResponse internalGenerateGemini(String prompt, String inputImage, String apiKey, String model) {
@@ -382,8 +403,15 @@ public class ImageService {
                     throw new ApiException("Google Error: " + responseBody, "IMAGEN_ERROR");
                 }
 
-                log.info("Gemini Raw Response: {}", responseBody);
-                System.err.println("DEBUG_GEMINI_mRESPONSE: " + responseBody);
+                log.info("Gemini Raw Response (first 500 chars): {}",
+                        responseBody.substring(0, Math.min(500, responseBody.length())));
+
+                // Check if response is valid JSON before parsing
+                if (responseBody.isEmpty() || !responseBody.trim().startsWith("{")) {
+                    log.error("Invalid JSON response from Gemini. Full response: {}", responseBody);
+                    throw new ApiException("Invalid response format from Gemini", "IMAGEN_ERROR");
+                }
+
                 return parseImageResponse(responseBody);
             }
 
