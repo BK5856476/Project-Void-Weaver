@@ -15,12 +15,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins(
-                        "http://localhost:5173", // Local Vite dev server
-                        "http://localhost:3000", // Alternative local port
-                        "https://*.vercel.app", // Vercel deployments
-                        "https://voidweaver.vercel.app" // Production domain
-                )
+                .allowedOriginPatterns("*") // Allow all origins (safe for monolithic deployment)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
