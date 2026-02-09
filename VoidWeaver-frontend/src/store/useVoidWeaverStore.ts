@@ -10,7 +10,7 @@
 
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { VoidWeaverState, ModuleDto, ModuleType, EngineType } from '@/types'
+import type { VoidWeaverState, ModuleDto, ModuleType, EngineType, GeneratedImage } from '@/types'
 
 /**
  * 模块显示名称映射表
