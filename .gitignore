@@ -1,0 +1,63 @@
+# IDEs and Editors
+.vscode/
+.idea/
+*.iws
+*.iml
+*.ipr
+.settings/
+.classpath
+.project
+.factorypath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+bower_components/
+
+# Build artifacts
+target/
+dist/
+dist-ssr/
+build/
+*.jar
+*.war
+*.ear
+
+# Environment variables (Secrets)
+.env
+.env.*
+!.env.example
+*.local
+*.credentials
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Internal Documentation
+PRD.md
+API_SPEC.md
+TECH_DESIGN.md
+说明.md
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+build_log_*.txt
+
+# Temporary files
+tmp/
+temp/
+.cache/
+.sts4-cache/
+
+# Local configuration
+local.properties
+.apt_generated/
